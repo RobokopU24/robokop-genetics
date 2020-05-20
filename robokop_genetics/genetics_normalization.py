@@ -44,6 +44,7 @@ class GeneticsNormalizer(object):
     # extract the preferred curie and name from the synonym set
     # we prefer CAID for the ID and DBSNP as the name if available
     def get_id_and_name_from_synonyms(self, synonyms: Set):
+        normalized_id = None
         caid_curies = Text.get_curies_by_prefix('CAID', synonyms)
         if caid_curies:
             caid_curie = caid_curies.pop()
