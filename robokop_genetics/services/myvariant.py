@@ -11,13 +11,9 @@ import time
 class MyVariantService(object):
 
     def __init__(self, log_file_path=None, hgnc_service=None):
-        if log_file_path is None:
-            self.logging_on = False
-        else:
-            self.logging_on = True
-            self.logger = LoggingUtil.init_logging(__name__,
-                                                   logging.INFO,
-                                                   logFilePath=log_file_path)
+        self.logger = LoggingUtil.init_logging(__name__,
+                                               logging.INFO,
+                                               logFilePath=log_file_path)
         self.url = "http://myvariant.info/v1/"
         self.effects_ignore_list = ['intergenic_region', 'sequence_feature']
         # we'll switch to this when they do
@@ -40,8 +36,7 @@ class MyVariantService(object):
                 # for now we only do hg38
                 myvariant_curies = Text.get_curies_by_prefix('MYVARIANT_HG38', variant_synonyms)
                 if not myvariant_curies:
-                    if self.logging_on:
-                        self.logger.info(f'No MYVARIANT_HG38 synonym found for: {variant_id}')
+                    self.logger.info(f'No MYVARIANT_HG38 synonym found for: {variant_id}')
                 else:
                     for myvar_curie in myvariant_curies:
                         myvar_id = Text.un_curie(myvar_curie)
@@ -49,8 +44,7 @@ class MyVariantService(object):
                         id_lookup[myvar_id] = variant_id
 
             if not post_params['ids']:
-                if self.logging_on:
-                    self.logger.warning('batch_sequence_variant_to_gene called but all nodes provided had no MyVariant IDs')
+                self.logger.warning('batch_sequence_variant_to_gene called but all nodes provided had no MyVariant IDs')
                 return annotation_dictionary
 
             # remove that extra comma
@@ -68,11 +62,9 @@ class MyVariantService(object):
                         if results:
                             annotation_dictionary[variant_id].extend(results)
                     except KeyError as e:
-                        if self.logging_on:
-                            self.logger.warning(f'MyVariant batch call failed for annotation: {annotation_json["query"]} ({e})')
+                        self.logger.warning(f'MyVariant batch call failed for annotation: {annotation_json["query"]} ({e})')
             else:
-                if self.logging_on:
-                    self.logger.error(f'MyVariant non-200 response on batch: {query_response.status_code})')
+                self.logger.error(f'MyVariant non-200 response on batch: {query_response.status_code})')
             return annotation_dictionary
         else:
             raise Exception('Error: More than 1000 variants not supported for MyVariant batch call.')
@@ -86,8 +78,7 @@ class MyVariantService(object):
             myvariant_ids = Text.get_curies_by_prefix('MYVARIANT_HG19', variant_synonyms)
             myvariant_assembly = 'hg19'
         if not myvariant_ids:
-            if self.logging_on:
-                self.logger.warning(f'No MyVariant ID found for {variant_id}, sequence_variant_to_gene failed.')
+            self.logger.warning(f'No MyVariant ID found for {variant_id}, sequence_variant_to_gene failed.')
         else: 
             for curie_myvariant_id in myvariant_ids:
                 myvariant_id = Text.un_curie(curie_myvariant_id)
@@ -97,8 +88,7 @@ class MyVariantService(object):
                     query_json = query_response.json()
                     return_results.extend(self.process_annotation(variant_id, query_json, curie_myvariant_id))
                 else:
-                    if self.logging_on:
-                        self.logger.error(f'MyVariant returned a non-200 response: {query_response.status_code})')
+                    self.logger.error(f'MyVariant returned a non-200 response: {query_response.status_code})')
                     
         return return_results
 
@@ -124,8 +114,7 @@ class MyVariantService(object):
                     gene_id = self.hgnc_service.get_gene_id_from_symbol(gene_symbol)
                     if gene_id is None:
                         # if we can't find a real id, just skip it
-                        if self.logging_on:
-                            self.logger.info(f'Could not find real ID for gene symbol: {gene_symbol}')
+                        self.logger.info(f'Could not find real ID for gene symbol: {gene_symbol}')
                         continue
 
                     gene_node = SimpleNode(id=gene_id, name=gene_symbol, type=node_types.GENE)
@@ -154,11 +143,9 @@ class MyVariantService(object):
                         results.append((edge, gene_node))
             
             else:
-                if self.logging_on:
-                    self.logger.error(f'No snpeff annotation found for variant {variant_id}')
+                self.logger.error(f'No snpeff annotation found for variant {variant_id}')
 
         except KeyError as e:
-            if self.logging_on:
-                self.logger.error(f'Myvariant annotation error:{e}')
+            self.logger.error(f'Myvariant annotation error:{e}')
                 
         return results

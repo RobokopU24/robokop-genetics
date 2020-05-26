@@ -10,16 +10,11 @@ import requests
 class ClinGenService(object):
 
     def __init__(self, log_file_path=None):
-        if log_file_path is None:
-            self.logging_on = False
-        else:
-            self.logging_on = True
-            self.logger = LoggingUtil.init_logging(__name__,
-                                                   logging.INFO,
-                                                   logFilePath=log_file_path)
+        self.logger = LoggingUtil.init_logging(__name__,
+                                               logging.INFO,
+                                               logFilePath=log_file_path)
         self.url = 'https://reg.genome.network/'
         self.synon_fields_param = 'fields=none+@id+externalRecords.dbSNP+externalRecords.ClinVarVariations+externalRecords.MyVariantInfo_hg38+genomicAlleles-genomicAlleles.referenceSequence'
-        self.synonym_buffer = {}
 
     def get_batch_of_synonyms(self, variant_list, variant_format="hgvs"):
         # possible variant_format values not implemented yet
@@ -30,10 +25,10 @@ class ClinGenService(object):
         # ExAC.id
         # gnomAD.id
         if not variant_list:
-            return {}
+            return []
 
         separator = '\n'
-        synonym_dictionary = {}
+        results_list = []
         batches = ceil(len(variant_list) / 2000)
         for i in range(batches):
             variant_subset = variant_list[i * 2000:i * 2000 + 2000]
@@ -41,10 +36,8 @@ class ClinGenService(object):
             query_url = f'{self.url}alleles?file={variant_format}&{self.synon_fields_param}'
             all_alleles_json = self.query_service(query_url, data=hgvs_pseudo_file)
             for index, allele_json in enumerate(all_alleles_json):
-                hgvs_id = f'HGVS:{variant_subset[index]}'
-                synonym_dictionary[hgvs_id] = self.parse_allele_json_for_synonyms(allele_json)
-
-        return synonym_dictionary
+                results_list.append(self.parse_allele_json_for_synonyms(allele_json))
+        return results_list
 
     def get_synonyms_by_caid(self, caid):
         synonyms = set()
@@ -62,11 +55,11 @@ class ClinGenService(object):
             synonyms.update(self.parse_allele_json_for_synonyms(allele_json))
         return synonyms
 
-    def get_synonyms_by_rsid_with_sequence(self, rsid, actual_sequence):
+    def get_synonyms_by_rsid_with_sequence(self, rsid):
         if rsid.startswith('rs'):
             rsid = rsid[2:]
 
-        return self.get_synonyms_by_parameter_matching('dbSNP.rs', rsid, match_sequence=actual_sequence)
+        return self.get_synonyms_by_parameter_matching('dbSNP.rs', rsid)
 
     def get_synonyms_by_other_ids(self, synonym_set: Set):
         # Just looking for 1 hit because any hit should return all of the available synonyms and caid if they exist
@@ -104,15 +97,15 @@ class ClinGenService(object):
 
         return set()
 
-    def get_synonyms_by_parameter_matching(self, url_param, url_param_value, match_sequence=None):
+    def get_synonyms_by_parameter_matching(self, url_param, url_param_value):
         synonyms = set()
         query_url = f'{self.url}alleles?{url_param}={url_param_value}&{self.synon_fields_param}'
         query_json = self.query_service(query_url)
         for allele_json in query_json:
-            synonyms.update(self.parse_allele_json_for_synonyms(allele_json, match_sequence))
+            synonyms.update(self.parse_allele_json_for_synonyms(allele_json))
         return synonyms
 
-    def parse_allele_json_for_synonyms(self, allele_json, match_sequence=None):
+    def parse_allele_json_for_synonyms(self, allele_json):
         synonyms = set()
         try:
             variant_caid = allele_json['@id'].rsplit('/', 1)[1]
@@ -127,11 +120,6 @@ class ClinGenService(object):
                     for hgvs_id in genomic_allele['hgvs']:
                         synonyms.add(f'HGVS:{hgvs_id}')
                     if 'referenceGenome' in genomic_allele and genomic_allele['referenceGenome'] == 'GRCh38':
-                        # this is put on hold
-                        # this doesn't match the sequence, bail
-                        # if match_sequence and match_sequence != sequence:
-                        #    return set()
-
                         if 'chromosome' in genomic_allele:
                             sequence = genomic_allele['coordinates'][0]['allele']
                             chromosome = genomic_allele['chromosome']
@@ -141,8 +129,8 @@ class ClinGenService(object):
                             synonyms.add(f'ROBO_VARIANT:{robokop_variant_id}')
 
             except KeyError as e:
-                if self.logging_on:
-                    self.logger.info(f'parsing sequence variant synonym - genomicAlleles KeyError for {variant_caid}: {e}')
+                error_message = f'parsing sequence variant synonym - genomicAlleles KeyError for {variant_caid}: {e}'
+                self.logger.info(error_message)
 
         if 'externalRecords' in allele_json:
             if 'MyVariantInfo_hg19' in allele_json['externalRecords']:
@@ -197,10 +185,9 @@ class ClinGenService(object):
         else:
             query_response = requests.get(query_url)
         if query_response.status_code != 200:
-            if self.logging_on:
-                self.logger.warning(f'ClinGen returned a non-200 response({query_response.status_code}) calling ({query_url})')
+            error_message = f'ClinGen returned a non-200 response({query_response.status_code}) calling ({query_url})'
+            self.logger.warning(error_message)
             return {}
         else:
             query_json = query_response.json()
             return query_json
-
