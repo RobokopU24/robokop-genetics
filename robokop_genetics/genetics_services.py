@@ -41,10 +41,12 @@ class GeneticsServices(object):
         self.ensembl = EnsemblService(log_file_path)
 
     def get_variant_to_gene(self, services: list, variant_nodes: list):
+        self.logger.info(f'Get variant to gene called on {len(variant_nodes)} nodes.')
         all_results = defaultdict(list)
         for service in services:
             nodes_that_need_results = []
             if self.cache:
+                cached_result_count = 0
                 cache_key = f'{service}_sequence_variant_to_gene'
                 cached_results = self.cache.get_service_results(cache_key, [node.id for node in variant_nodes])
 
@@ -52,10 +54,12 @@ class GeneticsServices(object):
                     cached_result = cached_results[i]
                     if cached_result is not None:
                         all_results[node.id] = cached_result
+                        cached_result_count += 1
                     else:
                         nodes_that_need_results.append(node)
             else:
                 nodes_that_need_results = variant_nodes
+            self.logger.info(f'{service} variant to gene found results for {cached_result_count} nodes in the cache.')
 
             if service == MYVARIANT:
                 variant_dict = {}
