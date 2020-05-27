@@ -1,7 +1,6 @@
 from robokop_genetics.services.myvariant import MyVariantService
 from robokop_genetics.services.ensembl import EnsemblService
 from robokop_genetics.services.hgnc import HGNCService
-from robokop_genetics.simple_graph_components import SimpleNode
 from robokop_genetics.util import LoggingUtil
 from robokop_genetics.genetics_cache import GeneticsCache
 from collections import defaultdict
@@ -72,7 +71,7 @@ class GeneticsServices(object):
                 for node_id, results in new_myvariant_results.items():
                     all_results[node_id].extend(results)
                 if self.cache:
-                    self.cache.set_service_results(MYVARIANT, new_myvariant_results)
+                    self.cache.set_service_results(cache_key, new_myvariant_results)
             elif service == ENSEMBL:
                 new_ensembl_results = {}
                 for node in nodes_that_need_results:
@@ -81,7 +80,7 @@ class GeneticsServices(object):
                     new_ensembl_results[variant_id] = self.ensembl.sequence_variant_to_gene(variant_id, variant_syns)
                     all_results[variant_id].extend(new_ensembl_results[variant_id])
                 if self.cache:
-                    self.cache.set_service_results(ENSEMBL, new_ensembl_results)
+                    self.cache.set_service_results(cache_key, new_ensembl_results)
         return all_results
 
 
