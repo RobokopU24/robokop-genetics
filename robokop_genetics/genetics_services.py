@@ -29,7 +29,8 @@ class GeneticsServices(object):
                     self.cache = GeneticsCache(redis_host=os.environ['ROBO_GENETICS_CACHE_HOST'],
                                                redis_port=os.environ['ROBO_GENETICS_CACHE_PORT'],
                                                redis_db=os.environ['ROBO_GENETICS_CACHE_DB'],
-                                               redis_password=os.environ['ROBO_GENETICS_CACHE_PASSWORD'])
+                                               redis_password=os.environ['ROBO_GENETICS_CACHE_PASSWORD'],
+                                               log_file_path=log_file_path)
                 except KeyError:
                     self.logger.debug('ROBO GENETICS CACHE environment variables not set up. No cache activated.')
                     self.cache = None

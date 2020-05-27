@@ -30,7 +30,7 @@ class GeneticsCache:
                                          port=int(redis_port),
                                          db=int(redis_db))
             self.redis.get('x')
-            self.logger.info(f"Cache connected to redis at {redis_host}:{redis_port}/{redis_db}")
+            self.logger.info(f"Genetics cache connected to redis at {redis_host}:{redis_port}/{redis_db}")
         except Exception as e:
             self.redis = None
             self.logger.error(e)
