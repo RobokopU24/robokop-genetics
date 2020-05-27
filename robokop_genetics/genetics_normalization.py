@@ -6,6 +6,7 @@ from typing import Set, List
 import logging
 import os
 
+
 class GeneticsNormalizer(object):
 
     def __init__(self, provided_cache: GeneticsCache = None, use_cache: bool=True, log_file_path: str = None):
@@ -61,18 +62,16 @@ class GeneticsNormalizer(object):
         batch_normalizations = self.get_batch_sequence_variant_normalization(hgvs_list_for_batch_normalizing)
         for i, normalization in enumerate(batch_normalizations):
             current_node = nodes_for_batch_normalizing[i]
-            if normalization is not None:
-                self.apply_normalization(current_node, normalization)
-                new_normalizations[current_node.id] = normalization
-            else:
+            if normalization is None:
                 if len(current_node.synonyms) > 1:
                     normalization = self.get_sequence_variant_normalization(current_node.id)
                 else:
                     # give up and accept the node as is,
                     # it only has one synonym and hasn't been successfully normalized
                     normalization = current_node.id, Text.un_curie(current_node.id), current_node.synonyms
-                self.apply_normalization(current_node, normalization)
-                new_normalizations[current_node.id] = normalization
+            new_normalizations[current_node.id] = normalization
+            self.apply_normalization(current_node, normalization)
+            new_normalizations[current_node.id] = normalization
         if self.cache:
             self.cache.set_batch_normalization(new_normalizations)
 
