@@ -10,6 +10,10 @@ class SimpleNode:
     properties: dict = field(default_factory=dict)
     synonyms: set = field(default_factory=set)
 
+    def __post_init__(self):
+        if not self.synonyms:
+            self.synonyms = {self.id}
+
     def get_synonyms_by_prefix(self, prefix: str):
         """Returns curies for any synonym with the input prefix"""
         return set(filter(lambda x: Text.get_curie(x) == prefix, self.synonyms))

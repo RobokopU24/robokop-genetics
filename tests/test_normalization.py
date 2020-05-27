@@ -98,6 +98,7 @@ def test_batch_normalization(genetics_normalizer):
     assert normalized_name == 'NC_000001.40:fakehgvs.1231234A>C'
     assert len(synonyms) == 1
 
+
 def test_node_based_normalization(genetics_normalizer):
     node = SimpleNode('CAID:CA128085', node_types.SEQUENCE_VARIANT, 'CA128085')
     genetics_normalizer.normalize(node)
@@ -133,6 +134,10 @@ def test_node_based_batch_normalization(genetics_normalizer):
     node = nodes[1]
     assert node.id == 'CAID:CA267021'
     assert node.name == 'rs398123953'
+
+    node = nodes[2]
+    assert node.id == 'CAID:CA6146346'
+    assert node.name == 'rs369602258'
 
     node = nodes[4]
     assert node.id == 'CAID:CA15722020'

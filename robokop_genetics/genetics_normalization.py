@@ -26,7 +26,6 @@ class GeneticsNormalizer(object):
             self.cache = None
         self.clingen = ClinGenService(log_file_path)
 
-
     def normalize(self, node: SimpleNode):
         normalization = self.cache.get_normalization(node.id) if self.cache else None
         if normalization is None:
@@ -37,23 +36,22 @@ class GeneticsNormalizer(object):
 
     def batch_normalize(self, nodes: list):
         node_ids = [node.id for node in nodes]
-        cached_normalizations = self.cache.get_batch_normalization(node_ids) if self.cache else None
         nodes_for_batch_normalizing = []
         hgvs_list_for_batch_normalizing = []
         new_normalizations = {}
+        cached_normalizations = self.cache.get_batch_normalization(node_ids) if self.cache else None
         for i, current_node in enumerate(nodes):
             normalization = cached_normalizations[i] if cached_normalizations else None
             if normalization is None:
                 hgvs_curies = current_node.get_synonyms_by_prefix('HGVS')
                 if hgvs_curies:
                     nodes_for_batch_normalizing.append(current_node)
-                    hgvs_list_for_batch_normalizing.append(next(iter(hgvs_curies)))
+                    hgvs_list_for_batch_normalizing.append(Text.un_curie(next(iter(hgvs_curies))))
                 else:
                     normalization = self.get_sequence_variant_normalization(current_node.id)
                     new_normalizations[current_node.id] = normalization
             if normalization is not None:
                 self.apply_normalization(current_node, normalization)
-
         batch_normalizations = self.get_batch_sequence_variant_normalization(hgvs_list_for_batch_normalizing)
         for i, normalization in enumerate(batch_normalizations):
             current_node = nodes_for_batch_normalizing[i]
