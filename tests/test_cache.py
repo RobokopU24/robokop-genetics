@@ -76,9 +76,11 @@ def test_batch_normalization_cache(genetics_cache, mock_normalizations):
 
     genetics_cache.set_batch_normalization(mock_normalizations)
 
-    for node_id in mock_normalizations:
-        cached_normalization = genetics_cache.get_normalization(node_id)
-        cached_id, cached_name, cached_synonyms = cached_normalization
+    list_of_node_ids = list(mock_normalizations.keys())
+    batch_normalizations = genetics_cache.get_batch_normalization(list_of_node_ids)
+
+    for i, node_id in enumerate(list_of_node_ids):
+        cached_id, cached_name, cached_synonyms = batch_normalizations[i]
         expected_id, expected_name, expected_synonyms = mock_normalizations[node_id]
         assert cached_id == expected_id
         assert cached_name == expected_name

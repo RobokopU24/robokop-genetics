@@ -45,8 +45,8 @@ class GeneticsServices(object):
         all_results = defaultdict(list)
         for service in services:
             nodes_that_need_results = []
+            cached_result_count = 0
             if self.cache:
-                cached_result_count = 0
                 cache_key = f'{service}_sequence_variant_to_gene'
                 cached_results = self.cache.get_service_results(cache_key, [node.id for node in variant_nodes])
 
