@@ -9,7 +9,7 @@ def genetics_services():
     # can use this for troubleshooting
     #log_file_path = './'
     log_file_path = None
-    return GeneticsServices(log_file_path)
+    return GeneticsServices(use_cache=False, log_file_path=log_file_path)
 
 
 def test_gene_symbol_to_id(genetics_services):

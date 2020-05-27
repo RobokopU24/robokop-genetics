@@ -4,16 +4,28 @@ from robokop_genetics.simple_graph_components import SimpleNode
 from robokop_genetics.util import LoggingUtil, Text
 from typing import Set, List
 import logging
-
+import os
 
 class GeneticsNormalizer(object):
 
-    def __init__(self, cache: GeneticsCache = None, log_file_path: str = None):
-        self.cache = cache
+    def __init__(self, provided_cache: GeneticsCache = None, use_cache: bool=True, log_file_path: str = None):
+        self.logger = LoggingUtil.init_logging(__name__, logging.INFO, logFilePath=log_file_path)
+        if use_cache:
+            if provided_cache:
+                self.cache = provided_cache
+            else:
+                try:
+                    self.cache = GeneticsCache(redis_host=os.environ['ROBO_GENETICS_CACHE_HOST'],
+                                               redis_port=os.environ['ROBO_GENETICS_CACHE_PORT'],
+                                               redis_db=os.environ['ROBO_GENETICS_CACHE_DB'],
+                                               redis_password=os.environ['ROBO_GENETICS_CACHE_PASSWORD'])
+                except KeyError as e:
+                    self.logger.debug('ROBO GENETICS CACHE environment variables not set up. No cache activated.')
+                    self.cache = None
+        else:
+            self.cache = None
         self.clingen = ClinGenService(log_file_path)
-        self.logger = LoggingUtil.init_logging(__name__,
-                                               logging.INFO,
-                                               logFilePath=log_file_path)
+
 
     def normalize(self, node: SimpleNode):
         normalization = self.cache.get_normalization(node.id) if self.cache else None
@@ -84,7 +96,12 @@ class GeneticsNormalizer(object):
         normalization_list = []
         synonym_list = self.clingen.get_batch_of_synonyms(hgvs_list)
         for i, normalized_synonyms in enumerate(synonym_list):
-            normalized_id, normalized_name = self.get_id_and_name_from_synonyms(normalized_synonyms)
+            if normalized_synonyms:
+                normalized_id, normalized_name = self.get_id_and_name_from_synonyms(normalized_synonyms)
+            else:
+                normalized_id = f'HGVS:{hgvs_list[i]}'
+                normalized_name = hgvs_list[i]
+                normalized_synonyms = {normalized_id}
             normalization_list.append((normalized_id, normalized_name, list(normalized_synonyms)))
         return normalization_list
 

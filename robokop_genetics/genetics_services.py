@@ -6,6 +6,7 @@ from robokop_genetics.util import LoggingUtil
 from robokop_genetics.genetics_cache import GeneticsCache
 from collections import defaultdict
 import logging
+import os
 
 MYVARIANT = "MyVariant"
 ENSEMBL = "Ensembl"
@@ -16,11 +17,24 @@ BATCHABLE_VARIANT_TO_GENE_SERVES = [MYVARIANT]
 
 class GeneticsServices(object):
 
-    def __init__(self, cache: GeneticsCache = None, log_file_path: str = None):
+    def __init__(self, provided_cache: GeneticsCache = None, use_cache: bool=True, log_file_path: str = None):
         self.logger = LoggingUtil.init_logging(__name__,
                                                logging.INFO,
                                                logFilePath=log_file_path)
-        self.cache = cache
+        if use_cache:
+            if provided_cache:
+                self.cache = provided_cache
+            else:
+                try:
+                    self.cache = GeneticsCache(redis_host=os.environ['ROBO_GENETICS_CACHE_HOST'],
+                                               redis_port=os.environ['ROBO_GENETICS_CACHE_PORT'],
+                                               redis_db=os.environ['ROBO_GENETICS_CACHE_DB'],
+                                               redis_password=os.environ['ROBO_GENETICS_CACHE_PASSWORD'])
+                except KeyError as e:
+                    self.logger.debug('ROBO GENETICS CACHE environment variables not set up. No cache activated.')
+                    self.cache = None
+        else:
+            self.cache = None
         self.hgnc = HGNCService(log_file_path)
         self.myvariant = MyVariantService(log_file_path, hgnc_service=self.hgnc)
         self.ensembl = EnsemblService(log_file_path)

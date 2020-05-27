@@ -7,7 +7,7 @@ import robokop_genetics.node_types as node_types
 
 @pytest.fixture()
 def genetics_normalizer():
-    return GeneticsNormalizer()
+    return GeneticsNormalizer(use_cache=False)
 
 
 def test_normalization(genetics_normalizer):
@@ -73,13 +73,15 @@ def test_batch_normalization(genetics_normalizer):
     hgvs_ids = ['NC_000011.10:g.68032291C>G',
                 'NC_000023.9:g.32317682G>A',
                 'NC_000017.10:g.43009069G>C',
-                'NC_000017.10:g.43009127delG']
+                'NC_000017.10:g.43009127delG',
+                'NC_000001.40:fakehgvs.1231234A>C']
 
     batch_normalizations = genetics_normalizer.get_batch_sequence_variant_normalization(hgvs_ids)
 
     normalized_id, normalized_name, synonyms = batch_normalizations[0]
     assert 'DBSNP:rs369602258' in synonyms
     assert normalized_name == 'rs369602258'
+    assert isinstance(synonyms, list)
 
     normalized_id, normalized_name, synonyms = batch_normalizations[1]
     assert 'CAID:CA267021' in synonyms
@@ -91,6 +93,10 @@ def test_batch_normalization(genetics_normalizer):
     assert 'MYVARIANT_HG38:chr17:g.44931759del' in synonyms
     assert normalized_name == 'rs775219016'
 
+    normalized_id, normalized_name, synonyms = batch_normalizations[4]
+    assert normalized_id == 'HGVS:NC_000001.40:fakehgvs.1231234A>C'
+    assert normalized_name == 'NC_000001.40:fakehgvs.1231234A>C'
+    assert len(synonyms) == 1
 
 def test_node_based_normalization(genetics_normalizer):
     node = SimpleNode('CAID:CA128085', node_types.SEQUENCE_VARIANT, 'CA128085')
