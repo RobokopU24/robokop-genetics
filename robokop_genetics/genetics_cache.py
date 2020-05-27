@@ -5,6 +5,7 @@ import logging
 from robokop_genetics.util import LoggingUtil
 from robokop_genetics.simple_graph_components import SimpleEdge, SimpleNode
 
+
 class GeneticsCache:
 
     def __init__(self,
@@ -91,7 +92,7 @@ class GeneticsCache:
         pipeline = self.redis.pipeline()
         for node_id in node_ids:
             pipeline.get(f'{service_key}-{node_id}')
-            redis_results = pipeline.execute()
+        redis_results = pipeline.execute()
 
         decoded_results = []
         for results in redis_results:

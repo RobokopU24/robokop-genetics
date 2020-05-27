@@ -30,7 +30,7 @@ class GeneticsServices(object):
                                                redis_port=os.environ['ROBO_GENETICS_CACHE_PORT'],
                                                redis_db=os.environ['ROBO_GENETICS_CACHE_DB'],
                                                redis_password=os.environ['ROBO_GENETICS_CACHE_PASSWORD'])
-                except KeyError as e:
+                except KeyError:
                     self.logger.debug('ROBO GENETICS CACHE environment variables not set up. No cache activated.')
                     self.cache = None
         else:

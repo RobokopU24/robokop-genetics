@@ -87,14 +87,22 @@ def test_batch_normalization_cache(genetics_cache, mock_normalizations):
 
 def test_service_results_cache(genetics_cache, genetics_services):
 
+    # TODO these service queries should be mocked instead of calling the service
+    results_dict = {}
     node_id = 'CAID:CA279509'
-    service_key = f'{ENSEMBL}_variant_to_gene'
     robokop_variant_id = f'ROBO_VARIANT:HG38|17|58206171|58206172|A'
     service_results = genetics_services.query_variant_to_gene(ENSEMBL, node_id, {node_id, robokop_variant_id})
-    results_dict = {node_id: service_results}
+    results_dict[node_id] = service_results
+
+    node_id_2 = 'FAKECURIE:39'
+    robokop_variant_id = f'ROBO_VARIANT:HG38|X|32389643|32389644|A'
+    service_results = genetics_services.query_variant_to_gene(ENSEMBL, node_id_2, {node_id_2, robokop_variant_id})
+    results_dict[node_id_2] = service_results
+
+    service_key = f'{ENSEMBL}_variant_to_gene'
     genetics_cache.set_service_results(service_key, results_dict)
 
-    results_from_cache = genetics_cache.get_service_results(service_key, node_ids=[node_id])
+    results_from_cache = genetics_cache.get_service_results(service_key, node_ids=[node_id, node_id_2])
     results = results_from_cache[0]
     for edge, node in results:
         if node.id == "ENSEMBL:ENSG00000108384":
@@ -111,4 +119,21 @@ def test_service_results_cache(genetics_cache, genetics_services):
     assert 'ENSEMBL:ENSG00000121053' in identifiers
     assert 'ENSEMBL:ENSG00000167419' in identifiers
     assert len(identifiers) > 20
+
+    results = results_from_cache[1]
+    identifiers = [node.id for edge, node in results]
+    assert 'ENSEMBL:ENSG00000198947' in identifiers
+
+    node_id_3 = 'CAID:CA6451230'
+    service_key = f'{MYVARIANT}_variant_to_gene'
+    myvariant_curie = "MYVARIANT_HG38:chr12:g.11091595T>C"
+    service_results = genetics_services.query_variant_to_gene(MYVARIANT, node_id_3, {node_id_3, myvariant_curie})
+    results_dict = {node_id_3: service_results}
+    genetics_cache.set_service_results(service_key, results_dict)
+
+    results_from_cache = genetics_cache.get_service_results(service_key, node_ids=[node_id_3])
+    results = results_from_cache[0]
+    identifiers = [node.id for edge, node in results]
+    assert 'HGNC:9366' in identifiers
+
 
