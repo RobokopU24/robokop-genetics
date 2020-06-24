@@ -55,6 +55,13 @@ def test_myvariant(genetics_services):
     assert 'SNPEFF:splice_acceptor_variant' in pids
     assert 'SNPEFF:downstream_gene_variant' in pids
 
+    relations = genetics_services.query_variant_to_gene(MYVARIANT, 'MYVARIANT_HG38:chr17:g.43045712T>C', {'MYVARIANT_HG38:chr17:g.43045712T>C'})
+    identifiers = [node.id for edge, node in relations]
+    assert 'HGNC:1100' in identifiers
+    plabels = [edge.predicate_label for edge, node in relations]
+    assert 'three_prime_UTR_variant' in plabels
+    assert 'missense_variant' in plabels
+
 
 def test_batch_myvariant(genetics_services):
 
@@ -63,6 +70,7 @@ def test_batch_myvariant(genetics_services):
     variant_dict['MYVARIANT_HG38:chrX:g.32389644G>A'] = {'MYVARIANT_HG38:chrX:g.32389644G>A'}
     variant_dict['MYVARIANT_HG38:chr17:g.7674894G>A'] = {'MYVARIANT_HG38:chr17:g.7674894G>A'}
     variant_dict['MYVARIANT_HG38:chr9:g.130489423A>G'] = {'MYVARIANT_HG38:chr9:g.130489423A>G'}
+    variant_dict['MYVARIANT_HG38:chr17:g.43045712T>C'] = {'MYVARIANT_HG38:chr17:g.43045712T>C'}
 
     batch_results = genetics_services.batch_query_variant_to_gene(MYVARIANT, variant_dict)
 
@@ -88,6 +96,13 @@ def test_batch_myvariant(genetics_services):
     identifiers = [node.id for edge, node in relations]
     assert 'HGNC:758' in identifiers
     plabels = [edge.predicate_label for edge, node in relations]
+    assert 'missense_variant' in plabels
+
+    relations = batch_results['MYVARIANT_HG38:chr17:g.43045712T>C']
+    identifiers = [node.id for edge, node in relations]
+    assert 'HGNC:1100' in identifiers
+    plabels = [edge.predicate_label for edge, node in relations]
+    assert 'three_prime_UTR_variant' in plabels
     assert 'missense_variant' in plabels
 
 

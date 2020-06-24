@@ -7,7 +7,7 @@ from robokop_genetics.genetics_services import *
 @pytest.fixture()
 def genetics_cache():
     testing_prefix = 'robo-testing-key-'
-    if os.environ['ROBO_GENETICS_CACHE_HOST']:
+    if 'ROBO_GENETICS_CACHE_HOST' in os.environ:
         testing_cache = GeneticsCache(
             redis_db=os.environ['ROBO_GENETICS_CACHE_DB'],
             redis_host=os.environ['ROBO_GENETICS_CACHE_HOST'],
@@ -17,8 +17,7 @@ def genetics_cache():
         testing_cache.delete_all_keys_with_prefix(testing_prefix)
         return testing_cache
     else:
-        print('oops, cache environment variables not set!')
-
+        pytest.fail('Cache environment variables not set! Cache can not be utilized.')
 
 @pytest.fixture()
 def genetics_services():
