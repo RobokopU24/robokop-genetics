@@ -16,7 +16,7 @@ class EnsemblService(object):
     def __init__(self, log_file_path=None):
         self.logger = LoggingUtil.init_logging(__name__,
                                                logging.INFO,
-                                               logFilePath=log_file_path)
+                                               log_file_path=log_file_path)
         self.url = 'https://rest.ensembl.org'
         self.var_to_gene_predicate_id = 'GAMMA:0000102'
         self.var_to_gene_predicate_label = 'nearby_variant_of'

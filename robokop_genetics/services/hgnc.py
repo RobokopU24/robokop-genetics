@@ -22,7 +22,7 @@ class HGNCService(object):
     def __init__(self, log_file_path=None):
         self.logger = LoggingUtil.init_logging(__name__,
                                                logging.INFO,
-                                               logFilePath=log_file_path)
+                                               log_file_path=log_file_path)
         self.hgnc_symbol_to_curie = None
 
     def get_gene_id_from_symbol(self, gene_symbol: str):

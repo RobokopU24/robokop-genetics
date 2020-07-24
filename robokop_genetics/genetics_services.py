@@ -19,7 +19,7 @@ class GeneticsServices(object):
     def __init__(self, provided_cache: GeneticsCache = None, use_cache: bool=True, log_file_path: str = None):
         self.logger = LoggingUtil.init_logging(__name__,
                                                logging.INFO,
-                                               logFilePath=log_file_path)
+                                               log_file_path=log_file_path)
         if use_cache:
             if provided_cache:
                 self.cache = provided_cache

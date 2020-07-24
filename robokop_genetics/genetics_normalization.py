@@ -9,8 +9,10 @@ import os
 
 class GeneticsNormalizer(object):
 
-    def __init__(self, provided_cache: GeneticsCache = None, use_cache: bool=True, log_file_path: str = None):
-        self.logger = LoggingUtil.init_logging(__name__, logging.INFO, logFilePath=log_file_path)
+    def __init__(self, provided_cache: GeneticsCache=None, use_cache: bool=True, log_file_path: str=None):
+        self.logger = LoggingUtil.init_logging(__name__,
+                                               logging.INFO,
+                                               log_file_path=log_file_path)
         if use_cache:
             if provided_cache:
                 self.cache = provided_cache
@@ -26,6 +28,7 @@ class GeneticsNormalizer(object):
                     self.logger.info('ROBO_GENETICS_CACHE environment variables not set up. No cache activated.')
                     self.cache = None
         else:
+            self.logger.info('Robokop Genetics normalizer initialized with no cache activated.')
             self.cache = None
         self.clingen = ClinGenService(log_file_path)
 

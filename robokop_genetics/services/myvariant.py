@@ -13,7 +13,7 @@ class MyVariantService(object):
     def __init__(self, log_file_path=None, hgnc_service=None):
         self.logger = LoggingUtil.init_logging(__name__,
                                                logging.INFO,
-                                               logFilePath=log_file_path)
+                                               log_file_path=log_file_path)
         self.url = "http://myvariant.info/v1/"
         self.effects_ignore_list = ['intergenic_region', 'sequence_feature']
         # we'll switch to this when they do

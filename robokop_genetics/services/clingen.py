@@ -12,7 +12,7 @@ class ClinGenService(object):
     def __init__(self, log_file_path=None):
         self.logger = LoggingUtil.init_logging(__name__,
                                                logging.INFO,
-                                               logFilePath=log_file_path)
+                                               log_file_path=log_file_path)
         self.url = 'https://reg.genome.network/'
         self.synon_fields_param = 'fields=none+@id+externalRecords.dbSNP+externalRecords.ClinVarVariations+externalRecords.MyVariantInfo_hg38+genomicAlleles-genomicAlleles.referenceSequence'
 
