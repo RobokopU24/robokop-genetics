@@ -21,8 +21,9 @@ class GeneticsNormalizer(object):
                                                redis_db=os.environ['ROBO_GENETICS_CACHE_DB'],
                                                redis_password=os.environ['ROBO_GENETICS_CACHE_PASSWORD'],
                                                log_file_path=log_file_path)
+                    self.logger.info('ROBO_GENETICS_CACHE environment variables found. Attempted to connect to cache.')
                 except KeyError:
-                    self.logger.debug('ROBO_GENETICS_CACHE environment variables not set up. No cache activated.')
+                    self.logger.info('ROBO_GENETICS_CACHE environment variables not set up. No cache activated.')
                     self.cache = None
         else:
             self.cache = None
