@@ -52,6 +52,7 @@ class GeneticsNormalizer(object):
                     nodes_for_batch_normalizing.append(current_node)
                     hgvs_list_for_batch_normalizing.append(Text.un_curie(next(iter(hgvs_curies))))
                 else:
+                    # this node has no HGVS id so it cant be batched, go ahead and do it by itself
                     normalization = self.get_sequence_variant_normalization(current_node.id)
                     new_normalizations[current_node.id] = normalization
             else:
@@ -64,6 +65,7 @@ class GeneticsNormalizer(object):
             current_node = nodes_for_batch_normalizing[i]
             if normalization is None:
                 if len(current_node.synonyms) > 1:
+                    # we only get here if the node had an HGVS but didnt normalize using that
                     normalization = self.get_sequence_variant_normalization(current_node.id)
                 else:
                     # give up and accept the node as is,
@@ -71,6 +73,7 @@ class GeneticsNormalizer(object):
                     normalization = current_node.id, Text.un_curie(current_node.id), current_node.synonyms
             new_normalizations[current_node.id] = normalization
             self.apply_normalization(current_node, normalization)
+            # this actually does something, id could have changed in apply_normalization, we want both keys
             new_normalizations[current_node.id] = normalization
         if self.cache:
             self.cache.set_batch_normalization(new_normalizations)
