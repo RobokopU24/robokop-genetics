@@ -18,7 +18,7 @@ class GeneticsCache:
         self.NORMALIZATION_KEY_PREFIX = f'{prefix}normalize-'
         self.logger = LoggingUtil.init_logging(__name__,
                                                logging.INFO,
-                                               logFilePath=log_file_path)
+                                               log_file_path=log_file_path)
         try:
             if redis_password:
                 self.redis = redis.Redis(host=redis_host,
