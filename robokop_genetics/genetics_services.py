@@ -61,17 +61,19 @@ class GeneticsServices(object):
             self.logger.info(f'{service} variant to gene found results for {cached_result_count} nodes in the cache.')
 
             if service == MYVARIANT:
-                variant_dict = {}
-                for node in nodes_that_need_results:
-                    # TODO this should just pass all the synonyms
-                    # but for now the legacy apps with labeled IDs as synonyms wouldn't work
-                    # just grabbing plain CURIES that are relevant
-                    variant_dict[node.id] = node.get_synonyms_by_prefix('MYVARIANT_HG38')
-                new_myvariant_results = self.batch_query_variant_to_gene(MYVARIANT, variant_dict)
-                for node_id, results in new_myvariant_results.items():
-                    all_results[node_id].extend(results)
-                if self.cache:
-                    self.cache.set_service_results(cache_key, new_myvariant_results)
+                node_chunks = [nodes_that_need_results[i:i + 1000] for i in range(0, len(nodes_that_need_results), 1000)]
+                for node_chunk in node_chunks:
+                    variant_dict = {}
+                    for node in node_chunk:
+                        # TODO this should just pass all the synonyms
+                        # but for now the legacy apps with labeled IDs as synonyms wouldn't work
+                        # just grabbing plain CURIES that are relevant
+                        variant_dict[node.id] = node.get_synonyms_by_prefix('MYVARIANT_HG38')
+                    new_myvariant_results = self.batch_query_variant_to_gene(MYVARIANT, variant_dict)
+                    for node_id, results in new_myvariant_results.items():
+                        all_results[node_id].extend(results)
+                    if self.cache:
+                        self.cache.set_service_results(cache_key, new_myvariant_results)
             elif service == ENSEMBL:
                 new_ensembl_results = {}
                 for node in nodes_that_need_results:
