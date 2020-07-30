@@ -212,7 +212,7 @@ class EnsemblService(object):
                               properties=props)
             results.append((edge, gene_node))
 
-        self.logger.info(f'ensembl sequence_variant_to_gene found {len(results)} results for {variant_id}')
+        self.logger.debug(f'ensembl sequence_variant_to_gene found {len(results)} results for {variant_id}')
 
         return results
 
