@@ -129,13 +129,6 @@ class MyVariantService(object):
                         if effect in self.effects_ignore_list:
                             continue
 
-                        # gross way to avoid passing predicates that start with integers
-                        first_char = effect[0]
-                        if first_char == '3':
-                            effect = f'three{effect[1:]}'
-                        elif first_char == '5':
-                            effect = f'five{effect[1:]}'
-
                         predicate_id = f'SNPEFF:{effect}'
                         predicate_label = effect
 
