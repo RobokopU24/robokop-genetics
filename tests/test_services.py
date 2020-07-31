@@ -59,7 +59,7 @@ def test_myvariant(genetics_services):
     identifiers = [node.id for edge, node in relations]
     assert 'HGNC:1100' in identifiers
     plabels = [edge.predicate_label for edge, node in relations]
-    assert 'three_prime_UTR_variant' in plabels
+    assert '3_prime_UTR_variant' in plabels
     assert 'missense_variant' in plabels
 
 
@@ -102,7 +102,7 @@ def test_batch_myvariant(genetics_services):
     identifiers = [node.id for edge, node in relations]
     assert 'HGNC:1100' in identifiers
     plabels = [edge.predicate_label for edge, node in relations]
-    assert 'three_prime_UTR_variant' in plabels
+    assert '3_prime_UTR_variant' in plabels
     assert 'missense_variant' in plabels
 
 

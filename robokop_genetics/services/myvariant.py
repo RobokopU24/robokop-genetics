@@ -64,7 +64,7 @@ class MyVariantService(object):
                     except KeyError as e:
                         self.logger.warning(f'MyVariant batch call failed for annotation: {annotation_json["query"]} ({e})')
             else:
-                self.logger.error(f'MyVariant non-200 response on batch: {query_response.status_code})')
+                self.logger.error(f'MyVariant batch non-200 response: ({query_response.status_code}) ids: ({post_params["ids"]})')
             return annotation_dictionary
         else:
             raise Exception('Error: More than 1000 variants not supported for MyVariant batch call.')
