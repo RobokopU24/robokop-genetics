@@ -52,7 +52,7 @@ class GeneticsServices(object):
                 for i, node in enumerate(variant_nodes):
                     cached_result = cached_results[i]
                     if cached_result is not None:
-                        all_results[node.id] = cached_result
+                        all_results[node.id].extend(cached_result)
                         cached_result_count += 1
                     else:
                         nodes_that_need_results.append(node)
