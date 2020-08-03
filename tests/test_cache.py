@@ -103,17 +103,23 @@ def test_service_results_cache(genetics_cache, genetics_services):
     service_key = f'{ENSEMBL}_variant_to_gene'
     genetics_cache.set_service_results(service_key, results_dict)
 
-    results_from_cache = genetics_cache.get_service_results(service_key, node_ids=[node_id, node_id_2])
+    node_id_3 = 'MADEUP:1000'  # this shouldnt be in the cache
+    results_from_cache = genetics_cache.get_service_results(service_key, node_ids=[node_id, node_id_2, node_id_3])
     results = results_from_cache[0]
+    found_1 = False
+    found_2 = False
     for edge, node in results:
         if node.id == "ENSEMBL:ENSG00000108384":
             assert node.name == "RAD51C"
             assert edge.properties['distance'] == 486402
             assert edge.predicate_label == 'nearby_variant_of'
+            found_1 = True
 
         if node.id == "ENSEMBL:ENSG00000121101":
             assert node.name == "TEX14"
             assert edge.properties['distance'] > 0
+            found_2 = True
+    assert found_1 and found_2
 
     identifiers = [node.id for edge, node in results]
     assert 'ENSEMBL:ENSG00000011143' in identifiers
@@ -125,10 +131,18 @@ def test_service_results_cache(genetics_cache, genetics_services):
     identifiers = [node.id for edge, node in results]
     assert 'ENSEMBL:ENSG00000198947' in identifiers
 
+    # this one had no robo variant key so it shouldnt have a result
+    results = results_from_cache[2]
+    assert results is None
+
     node_id_3 = 'CAID:CA6451230'
     service_key = f'{MYVARIANT}_variant_to_gene'
     myvariant_curie = "MYVARIANT_HG38:chr12:g.11091595T>C"
     service_results = genetics_services.query_variant_to_gene(MYVARIANT, node_id_3, {node_id_3, myvariant_curie})
+    identifiers = [node.id for edge, node in service_results]
+    assert 'HGNC:18875' in identifiers
+    predicates = [edge.predicate_id for edge, node in service_results]
+    assert 'SNPEFF:missense_variant' in predicates
     results_dict = {node_id_3: service_results}
     genetics_cache.set_service_results(service_key, results_dict)
 
@@ -136,5 +150,7 @@ def test_service_results_cache(genetics_cache, genetics_services):
     results = results_from_cache[0]
     identifiers = [node.id for edge, node in results]
     assert 'HGNC:9366' in identifiers
+    predicates = [edge.predicate_id for edge, node in results]
+    assert 'SNPEFF:intron_variant' in predicates
 
 

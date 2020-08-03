@@ -31,5 +31,4 @@ class SimpleEdge:
     predicate_id: str
     predicate_label: str
     ctime: int
-    publications: list = field(default_factory=list)
     properties: dict = field(default_factory=dict)

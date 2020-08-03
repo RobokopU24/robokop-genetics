@@ -59,6 +59,7 @@ class GeneticsCache:
             normalization_key = f'{self.NORMALIZATION_KEY_PREFIX}{node_id}'
             pipeline.get(normalization_key)
         results = pipeline.execute()
+
         for i, result in enumerate(results):
             if results[i] is not None:
                 results[i] = json.loads(results[i])
@@ -82,7 +83,6 @@ class GeneticsCache:
                          "predicate_id": edge.predicate_id,
                          "predicate_label": edge.predicate_label,
                          "ctime": edge.ctime,
-                         "publications": edge.publications,
                          "properties": edge.properties}
             encoded_result = {"edge": json_edge, "node": json_node}
             encoded_results.append(encoded_result)
@@ -93,10 +93,8 @@ class GeneticsCache:
         for node_id in node_ids:
             pipeline.get(f'{service_key}-{node_id}')
         redis_results = pipeline.execute()
-
-        decoded_results = []
-        for results in redis_results:
-            decoded_results.append(self.__decode_service_results(results) if results is not None else None)
+        local_decode_results = self.__decode_service_results
+        decoded_results = list(map(lambda result: local_decode_results(result) if result else None, redis_results))
         return decoded_results
 
     def __decode_service_results(self, redis_results):
@@ -104,35 +102,23 @@ class GeneticsCache:
         json_object = json.loads(redis_results)
         for result in json_object:
             edge_json = result["edge"]
+            edge_object = SimpleEdge(source_id=edge_json['source_id'],
+                                     target_id=edge_json['target_id'],
+                                     provided_by=edge_json['provided_by'],
+                                     input_id=edge_json['input_id'],
+                                     predicate_id=edge_json['predicate_id'],
+                                     predicate_label=edge_json['predicate_label'],
+                                     ctime=edge_json['ctime'],
+                                     properties=edge_json['properties'])
+            # note that right now we're not caching properties or synonyms for service nodes,
+            # properties aren't used yet, synonyms will come from normalization after the fact
             node_json = result["node"]
-            decoded_results.append((self.__decode_service_edge(edge_json),
-                                   self.__decode_service_node(node_json)))
+            node_object = SimpleNode(id=node_json["id"],
+                                     type=node_json["type"],
+                                     name=node_json["name"])
+            decoded_results.append((edge_object,
+                                   node_object))
         return decoded_results
-
-    def __decode_service_edge(self, edge_json):
-        publications = []
-        for p in edge_json['publications']:
-            publications.append(p)
-        properties = {}
-        for key, value in edge_json['properties'].items():
-            if key == "distance":
-                properties[key] = int(value)
-        return SimpleEdge(source_id=edge_json['source_id'],
-                          target_id=edge_json['target_id'],
-                          provided_by=edge_json['provided_by'],
-                          input_id=edge_json['input_id'],
-                          predicate_id=edge_json['predicate_id'],
-                          predicate_label=edge_json['predicate_label'],
-                          ctime=edge_json['ctime'],
-                          publications=publications,
-                          properties=edge_json['properties'])
-
-    def __decode_service_node(self, node_json):
-        # note that right now we're not caching properties or synonyms for service nodes,
-        # properties aren't used yet, synonyms will come from normalization after the fact
-        return SimpleNode(id=node_json["id"],
-                          type=node_json["type"],
-                          name=node_json["name"])
 
     def delete_all_keys_with_prefix(self, prefix: str):
         keys = self.redis.keys(f'{prefix}*')

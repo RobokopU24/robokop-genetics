@@ -41,13 +41,13 @@ class GeneticsNormalizer(object):
         self.apply_normalization(node, normalization)
 
     def batch_normalize(self, nodes: list):
-        self.logger.info(f'Batch normalizing {len(nodes)} nodes.')
         node_ids = [node.id for node in nodes]
         nodes_for_batch_normalizing = []
         hgvs_list_for_batch_normalizing = []
         new_normalizations = {}
         cached_normalizations = self.cache.get_batch_normalization(node_ids) if self.cache else None
         cached_result_count = 0
+        apply_normalization = self.apply_normalization
         for i, current_node in enumerate(nodes):
             normalization = cached_normalizations[i] if cached_normalizations else None
             if normalization is None:
@@ -62,8 +62,8 @@ class GeneticsNormalizer(object):
             else:
                 cached_result_count += 1
             if normalization is not None:
-                self.apply_normalization(current_node, normalization)
-        self.logger.info(f'Batch normalizing found {cached_result_count} nodes in the cache.')
+                apply_normalization(current_node, normalization)
+        self.logger.info(f'Batch normalizing found {cached_result_count}/{len(nodes)} nodes in the cache.')
         batch_normalizations = self.get_batch_sequence_variant_normalization(hgvs_list_for_batch_normalizing)
         for i, normalization in enumerate(batch_normalizations):
             current_node = nodes_for_batch_normalizing[i]
@@ -76,7 +76,7 @@ class GeneticsNormalizer(object):
                     # it only has one synonym and hasn't been successfully normalized
                     normalization = current_node.id, Text.un_curie(current_node.id), current_node.synonyms
             new_normalizations[current_node.id] = normalization
-            self.apply_normalization(current_node, normalization)
+            apply_normalization(current_node, normalization)
             # this actually does something, id could have changed in apply_normalization, we want both keys
             new_normalizations[current_node.id] = normalization
         if self.cache:
