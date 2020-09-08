@@ -10,7 +10,8 @@ import time
 
 class MyVariantService(object):
 
-    def __init__(self, log_file_path=None, hgnc_service=None):
+    def __init__(self, hgnc_service=None):
+        log_file_path = LoggingUtil.get_logging_path()
         self.logger = LoggingUtil.init_logging(__name__,
                                                logging.INFO,
                                                log_file_path=log_file_path)
@@ -19,10 +20,8 @@ class MyVariantService(object):
         # we'll switch to this when they do
         #self.url_fields = 'snpeff.ann.effect,snpeff.ann.feature_type,snpeff.ann.gene_id'
         self.url_fields = 'snpeff.ann.effect,snpeff.ann.feature_type,snpeff.ann.genename'
-        if hgnc_service:
-            self.hgnc_service = hgnc_service
-        else:
-            self.hgnc_service = HGNCService(log_file_path)
+
+        self.hgnc_service = hgnc_service if hgnc_service else HGNCService(log_file_path)
 
     def batch_sequence_variant_to_gene(self, variant_dict):
         if len(variant_dict) <= 1000:
@@ -74,12 +73,13 @@ class MyVariantService(object):
         return_results = []
         myvariant_ids = Text.get_curies_by_prefix('MYVARIANT_HG38', variant_synonyms)
         myvariant_assembly = 'hg38'
-        if not myvariant_ids:
-            myvariant_ids = Text.get_curies_by_prefix('MYVARIANT_HG19', variant_synonyms)
-            myvariant_assembly = 'hg19'
+        # if we needed hg19
+        #if not myvariant_ids:
+        #    myvariant_ids = Text.get_curies_by_prefix('MYVARIANT_HG19', variant_synonyms)
+        #    myvariant_assembly = 'hg19'
         if not myvariant_ids:
             self.logger.warning(f'No MyVariant ID found for {variant_id}, sequence_variant_to_gene failed.')
-        else: 
+        else:
             for curie_myvariant_id in myvariant_ids:
                 myvariant_id = Text.un_curie(curie_myvariant_id)
                 query_url = f'{self.url}variant/{myvariant_id}?assembly={myvariant_assembly}&fields=snpeff'
@@ -89,7 +89,7 @@ class MyVariantService(object):
                     return_results.extend(self.process_annotation(variant_id, query_json, curie_myvariant_id))
                 else:
                     self.logger.error(f'MyVariant returned a non-200 response: {query_response.status_code})')
-                    
+
         return return_results
 
     def process_annotation(self, variant_id, annotation_json, curie_id):

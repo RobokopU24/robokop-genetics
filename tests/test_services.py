@@ -6,10 +6,7 @@ import robokop_genetics.node_types as node_types
 
 @pytest.fixture()
 def genetics_services():
-    # can use this for troubleshooting
-    #log_file_path = './'
-    log_file_path = None
-    return GeneticsServices(use_cache=False, log_file_path=log_file_path)
+    return GeneticsServices(use_cache=False)
 
 
 def test_gene_symbol_to_id(genetics_services):
@@ -28,7 +25,7 @@ def test_gene_symbol_to_id(genetics_services):
 
 def test_myvariant(genetics_services):
 
-    relations = genetics_services.query_variant_to_gene(MYVARIANT, 'MYVARIANT_HG19:chr7:g.55241707G>T', {'MYVARIANT_HG19:chr7:g.55241707G>T'})
+    relations = genetics_services.query_variant_to_gene(MYVARIANT, 'MYVARIANT_HG38:chr7:g.55174014G>T', {'MYVARIANT_HG38:chr7:g.55174014G>T'})
     identifiers = [node.id for edge, node in relations]
     assert 'HGNC:3236' in identifiers
     plabels = [edge.predicate_label for edge, node in relations]
@@ -44,7 +41,7 @@ def test_myvariant(genetics_services):
     assert 'HGNC:41796' in identifiers
     assert 'HGNC:410' in identifiers
 
-    relations = genetics_services.query_variant_to_gene(MYVARIANT, 'MYVARIANT_HG19:chr17:g.56283533T>A', {'MYVARIANT_HG19:chr17:g.56283533T>A'})
+    relations = genetics_services.query_variant_to_gene(MYVARIANT, 'MYVARIANT_HG38:chr17:g.58206172T>A', {'MYVARIANT_HG38:chr17:g.58206172T>A'})
     identifiers = [node.id for edge, node in relations]
     assert 'HGNC:7121' in identifiers
     assert 'HGNC:3423' in identifiers
@@ -116,6 +113,10 @@ def test_ensembl(genetics_services):
     assert 'ENSEMBL:ENSG00000167419' in identifiers
     assert len(identifiers) > 20
 
+    predicate_ids = [edge.predicate_id for edge, node in relations]
+    assert 'SNPEFF:upstream_gene_variant' in predicate_ids
+    assert 'SNPEFF:downstream_gene_variant' in predicate_ids
+
     robokop_variant_id = f'ROBO_VARIANT:HG38|1|69092|69093|C'
     relations = genetics_services.query_variant_to_gene(ENSEMBL, 'CAID:CA16728208', {robokop_variant_id})
     identifiers = [node.id for edge, node in relations]
@@ -157,14 +158,6 @@ def test_services_with_nodes(genetics_services):
     node7 = SimpleNode(id="FAKECURIE:7", name="FakeName7", type=node_types.SEQUENCE_VARIANT)
     node7.synonyms = {"FAKECURIE:7"}
     all_results = genetics_services.get_variant_to_gene(ALL_VARIANT_TO_GENE_SERVICES, all_nodes)
-
-    # do we care about HG19 myvariant?
-    #results_for_node_1 = all_results[node1.id]
-    #identifiers = [node.id for edge, node in results_for_node_1]
-    #assert 'HGNC:3236' in identifiers
-    #pids = [edge.predicate_id for edge, node in results_for_node_1]
-    #assert 'SNPEFF:missense_variant' in pids
-    #assert 'SNPEFF:downstream_gene_variant' in pids
 
     results_for_node_2 = all_results[node2.id]
     identifiers = [node.id for edge, node in results_for_node_2]
