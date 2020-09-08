@@ -8,23 +8,16 @@ from robokop_genetics.genetics_services import *
 def genetics_cache():
     testing_prefix = 'robo-testing-key-'
     if 'ROBO_GENETICS_CACHE_HOST' in os.environ:
-        testing_cache = GeneticsCache(
-            redis_db=os.environ['ROBO_GENETICS_CACHE_DB'],
-            redis_host=os.environ['ROBO_GENETICS_CACHE_HOST'],
-            redis_port=os.environ['ROBO_GENETICS_CACHE_PORT'],
-            redis_password=os.environ['ROBO_GENETICS_CACHE_PASSWORD'],
-            prefix=testing_prefix)
+        testing_cache = GeneticsCache(prefix=testing_prefix)
         testing_cache.delete_all_keys_with_prefix(testing_prefix)
         return testing_cache
     else:
         pytest.fail('Cache environment variables not set! Cache can not be utilized.')
 
+
 @pytest.fixture()
 def genetics_services():
-    # can use this for troubleshooting
-    #log_file_path = './'
-    log_file_path = None
-    return GeneticsServices(log_file_path)
+    return GeneticsServices()
 
 
 @pytest.fixture()
@@ -112,7 +105,7 @@ def test_service_results_cache(genetics_cache, genetics_services):
         if node.id == "ENSEMBL:ENSG00000108384":
             assert node.name == "RAD51C"
             assert edge.properties['distance'] == 486402
-            assert edge.predicate_label == 'nearby_variant_of'
+            assert edge.predicate_label == 'upstream_gene_variant'
             found_1 = True
 
         if node.id == "ENSEMBL:ENSG00000121101":
@@ -152,5 +145,3 @@ def test_service_results_cache(genetics_cache, genetics_services):
     assert 'HGNC:9366' in identifiers
     predicates = [edge.predicate_id for edge, node in results]
     assert 'SNPEFF:intron_variant' in predicates
-
-

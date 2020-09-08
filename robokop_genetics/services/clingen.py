@@ -9,7 +9,8 @@ import requests
 
 class ClinGenService(object):
 
-    def __init__(self, log_file_path=None):
+    def __init__(self):
+        log_file_path = LoggingUtil.get_logging_path()
         self.logger = LoggingUtil.init_logging(__name__,
                                                logging.INFO,
                                                log_file_path=log_file_path)

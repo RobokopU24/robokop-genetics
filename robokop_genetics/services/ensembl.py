@@ -13,18 +13,24 @@ EnsemblGene = namedtuple('EnsemblGene', ['ensembl_id', 'ensembl_name', 'chromoso
 
 class EnsemblService(object):
     
-    def __init__(self, log_file_path=None):
+    def __init__(self, temp_dir: str=None):
+        log_file_path = LoggingUtil.get_logging_path()
         self.logger = LoggingUtil.init_logging(__name__,
                                                logging.INFO,
                                                log_file_path=log_file_path)
-        self.url = 'https://rest.ensembl.org'
-        self.var_to_gene_predicate_id = 'GAMMA:0000102'
-        self.var_to_gene_predicate_label = 'nearby_variant_of'
-        #self.var_to_var_predicate = LabeledID(identifier=f'NCIT:C16798', label=f'linked_to')
+
+        self.upstream_gene_predicate_id = 'SNPEFF:upstream_gene_variant'
+        self.upstream_gene_predicate_label = 'upstream_gene_variant'
+
+        self.downstream_gene_predicate_id = 'SNPEFF:downstream_gene_variant'
+        self.downstream_gene_predicate_label = 'downstream_gene_variant'
+
+        # This can cause issues if python doesn't have write access to the directory.
+        # If so, an appropriate directory needs to be specified. See the README.
+        temp_dir = temp_dir if temp_dir else '.'
+        self.gene_db_path = os.path.join(temp_dir, 'genes.sqlite3')
 
         self.gene_db_successfully_created = False
-        self.gene_db_path = os.path.join(os.path.dirname(__file__), 'genes.sqlite3')
-
         self.persistent_conn = None
         self.all_gene_annotations = None
 
@@ -43,8 +49,7 @@ class EnsemblService(object):
                                             <Attribute name = "chromosome_name" />
                                         </Dataset>
                                     </Query>"""
-        self.gene_batch_url = 'http://www.ensembl.org/biomart/martservice'
-        
+
         self.check_if_already_done_sql = "SELECT name FROM sqlite_master WHERE type='table' AND name='genes';"
         
         self.genes_table_sql = """CREATE TABLE IF NOT EXISTS genes (
@@ -170,7 +175,7 @@ class EnsemblService(object):
                     start_position = int(robokop_data[2])
                     end_position = int(robokop_data[3])
             except IndexError as e:
-                self.logger.debug(f'ensembl: robokop variant key not set properly for variant: {variant_id} - {robokop_ids[0]}')
+                self.logger.error(f'ensembl: robokop variant key not set properly for variant: {variant_id} - {robokop_ids[0]}')
                 return results
 
         if not found_valid_robokop_key:
@@ -197,17 +202,24 @@ class EnsemblService(object):
             gene_node = SimpleNode(id=f'ENSEMBL:{gene_id}', name=f'{gene_name}', type=node_types.GENE)
             if start_position < gene_start:
                 distance = gene_start - start_position
+                predicate_id = self.upstream_gene_predicate_id
+                predicate_label = self.upstream_gene_predicate_label
             elif end_position > gene_end:
                 distance = end_position - gene_end
+                predicate_id = self.downstream_gene_predicate_id
+                predicate_label = self.downstream_gene_predicate_label
             else:
                 distance = 0
+                predicate_id = self.downstream_gene_predicate_id
+                predicate_label = self.downstream_gene_predicate_label
+
             props = {'distance': distance}
             edge = SimpleEdge(source_id=variant_id,
                               target_id=gene_node.id,
                               provided_by='ensembl.sequence_variant_to_gene',
                               input_id=robokop_key_used,
-                              predicate_id=self.var_to_gene_predicate_id,
-                              predicate_label=self.var_to_gene_predicate_label,
+                              predicate_id=predicate_id,
+                              predicate_label=predicate_label,
                               ctime=time.time(),
                               properties=props)
             results.append((edge, gene_node))
@@ -241,4 +253,4 @@ class EnsemblService(object):
         if ensembl_id in self.all_gene_annotations:
             return self.all_gene_annotations[ensembl_id]
         else:
-            return {'ensembl_error' : f'{ensembl_id} not found.'}
+            return {'ensembl_error': f'{ensembl_id} not found.'}

@@ -5,7 +5,6 @@ from robokop_genetics.util import LoggingUtil
 from robokop_genetics.genetics_cache import GeneticsCache
 from collections import defaultdict
 import logging
-import os
 
 MYVARIANT = "MyVariant"
 ENSEMBL = "Ensembl"
@@ -16,63 +15,53 @@ BATCHABLE_VARIANT_TO_GENE_SERVES = [MYVARIANT]
 
 class GeneticsServices(object):
 
-    def __init__(self, provided_cache: GeneticsCache = None, use_cache: bool=True, log_file_path: str = None):
+    def __init__(self, use_cache: bool=True):
+        log_file_path = LoggingUtil.get_logging_path()
         self.logger = LoggingUtil.init_logging(__name__,
                                                logging.INFO,
                                                log_file_path=log_file_path)
         if use_cache:
-            if provided_cache:
-                self.cache = provided_cache
-            else:
-                try:
-                    self.cache = GeneticsCache(redis_host=os.environ['ROBO_GENETICS_CACHE_HOST'],
-                                               redis_port=os.environ['ROBO_GENETICS_CACHE_PORT'],
-                                               redis_db=os.environ['ROBO_GENETICS_CACHE_DB'],
-                                               redis_password=os.environ['ROBO_GENETICS_CACHE_PASSWORD'],
-                                               log_file_path=log_file_path)
-                except KeyError:
-                    self.logger.debug('ROBO GENETICS CACHE environment variables not set up. No cache activated.')
-                    self.cache = None
+            self.cache = GeneticsCache()
+            self.logger.info('Robokop Genetics Services initialized with cache activated.')
         else:
             self.cache = None
-        self.hgnc = HGNCService(log_file_path)
-        self.myvariant = MyVariantService(log_file_path, hgnc_service=self.hgnc)
-        self.ensembl = EnsemblService(log_file_path)
+            self.logger.info('Robokop Genetics Services initialized with no cache activated.')
+
+        self.hgnc = HGNCService()
+        self.myvariant = MyVariantService(hgnc_service=self.hgnc)
+        self.ensembl = EnsemblService(temp_dir=log_file_path)
 
     def get_variant_to_gene(self, services: list, variant_nodes: list):
         self.logger.info(f'Get variant to gene called on {len(variant_nodes)} nodes.')
         all_results = defaultdict(list)
         for service in services:
-            nodes_that_need_results = []
-            cached_result_count = 0
             if self.cache:
                 cache_key = f'{service}_sequence_variant_to_gene'
                 cached_results = self.cache.get_service_results(cache_key, [node.id for node in variant_nodes])
 
+                nodes_that_need_results = []
                 for i, node in enumerate(variant_nodes):
                     cached_result = cached_results[i]
                     if cached_result is not None:
                         all_results[node.id].extend(cached_result)
-                        cached_result_count += 1
                     else:
                         nodes_that_need_results.append(node)
+                self.logger.info(
+                    f'{service} variant to gene found results for {len(variant_nodes) - len(nodes_that_need_results)} nodes in the cache.')
             else:
                 nodes_that_need_results = variant_nodes
-            self.logger.info(f'{service} variant to gene found results for {cached_result_count} nodes in the cache.')
 
             if service == MYVARIANT:
                 node_chunks = [nodes_that_need_results[i:i + 1000] for i in range(0, len(nodes_that_need_results), 1000)]
                 for node_chunk in node_chunks:
                     variant_dict = {}
                     for node in node_chunk:
-                        # TODO this should just pass all the synonyms
-                        # but for now the legacy apps with labeled IDs as synonyms wouldn't work
-                        # just grabbing plain CURIES that are relevant
                         variant_dict[node.id] = node.get_synonyms_by_prefix('MYVARIANT_HG38')
                     new_myvariant_results = self.batch_query_variant_to_gene(MYVARIANT, variant_dict)
                     for node_id, results in new_myvariant_results.items():
                         all_results[node_id].extend(results)
                     if self.cache:
+                        self.logger.info(f'Storing {len(new_myvariant_results)} myvariant results in the cache.')
                         self.cache.set_service_results(cache_key, new_myvariant_results)
             elif service == ENSEMBL:
                 new_ensembl_results = {}
@@ -82,6 +71,7 @@ class GeneticsServices(object):
                     new_ensembl_results[variant_id] = self.ensembl.sequence_variant_to_gene(variant_id, variant_syns)
                     all_results[variant_id].extend(new_ensembl_results[variant_id])
                 if self.cache:
+                    self.logger.info(f'Storing {len(new_ensembl_results)} ensembl results in the cache.')
                     self.cache.set_service_results(cache_key, new_ensembl_results)
         return all_results
 

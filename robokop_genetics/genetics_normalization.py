@@ -4,33 +4,23 @@ from robokop_genetics.simple_graph_components import SimpleNode
 from robokop_genetics.util import LoggingUtil, Text
 from typing import Set, List
 import logging
-import os
 
 
 class GeneticsNormalizer(object):
 
-    def __init__(self, provided_cache: GeneticsCache=None, use_cache: bool=True, log_file_path: str=None):
+    def __init__(self, use_cache: bool=True):
+        log_file_path = LoggingUtil.get_logging_path()
         self.logger = LoggingUtil.init_logging(__name__,
                                                logging.INFO,
                                                log_file_path=log_file_path)
         if use_cache:
-            if provided_cache:
-                self.cache = provided_cache
-            else:
-                try:
-                    self.cache = GeneticsCache(redis_host=os.environ['ROBO_GENETICS_CACHE_HOST'],
-                                               redis_port=os.environ['ROBO_GENETICS_CACHE_PORT'],
-                                               redis_db=os.environ['ROBO_GENETICS_CACHE_DB'],
-                                               redis_password=os.environ['ROBO_GENETICS_CACHE_PASSWORD'],
-                                               log_file_path=log_file_path)
-                    self.logger.info('ROBO_GENETICS_CACHE environment variables found. Attempted to connect to cache.')
-                except KeyError:
-                    self.logger.info('ROBO_GENETICS_CACHE environment variables not set up. No cache activated.')
-                    self.cache = None
+            self.cache = GeneticsCache()
+            self.logger.info('Robokop Genetics Normalizer initialized with cache activated.')
         else:
-            self.logger.info('Robokop Genetics normalizer initialized with no cache activated.')
             self.cache = None
-        self.clingen = ClinGenService(log_file_path)
+            self.logger.info('Robokop Genetics Normalizer initialized with no cache activated.')
+
+        self.clingen = ClinGenService()
 
     def normalize(self, node: SimpleNode):
         normalization = self.cache.get_normalization(node.id) if self.cache else None

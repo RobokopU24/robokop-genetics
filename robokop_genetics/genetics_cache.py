@@ -1,4 +1,4 @@
-
+import os
 import json
 import redis
 import logging
@@ -9,16 +9,27 @@ from robokop_genetics.simple_graph_components import SimpleEdge, SimpleNode
 class GeneticsCache:
 
     def __init__(self,
-                 redis_host="localhost",
-                 redis_port=6379,
-                 redis_db=0,
-                 redis_password="",
-                 log_file_path: str = None,
+                 use_default_credentials: bool = True,
+                 redis_host: str = "localhost",
+                 redis_port: int = 6379,
+                 redis_db: int = 0,
+                 redis_password: str = "",
                  prefix: str = ""):
         self.NORMALIZATION_KEY_PREFIX = f'{prefix}normalize-'
+        log_file_path = LoggingUtil.get_logging_path()
         self.logger = LoggingUtil.init_logging(__name__,
                                                logging.INFO,
                                                log_file_path=log_file_path)
+        if use_default_credentials:
+            try:
+                redis_host = os.environ['ROBO_GENETICS_CACHE_HOST']
+                redis_port = os.environ['ROBO_GENETICS_CACHE_PORT']
+                redis_db = os.environ['ROBO_GENETICS_CACHE_DB']
+                redis_password = os.environ['ROBO_GENETICS_CACHE_PASSWORD']
+            except KeyError as key_ex:
+                self.logger.warning('ROBO_GENETICS_CACHE environment variables not set. No cache activated.')
+                raise Exception("Cache requested but ROBO_GENETICS_CACHE environment variables not set!")
+
         try:
             if redis_password:
                 self.redis = redis.Redis(host=redis_host,
@@ -32,9 +43,8 @@ class GeneticsCache:
             self.redis.get('x')
             self.logger.info(f"Genetics cache connected to redis at {redis_host}:{redis_port}/{redis_db}")
         except Exception as e:
-            self.redis = None
-            self.logger.error(e)
-            self.logger.error(f"Failed to connect to redis at {redis_host}:{redis_port}/{redis_db}.")
+            self.logger.error(f"Genetics cache failed to connect to redis at {redis_host}:{redis_port}/{redis_db}.")
+            raise e
 
     def set_normalization(self, node_id: str, normalization: tuple):
         normalization_key = f'{self.NORMALIZATION_KEY_PREFIX}{node_id}'
@@ -61,8 +71,8 @@ class GeneticsCache:
         results = pipeline.execute()
 
         for i, result in enumerate(results):
-            if results[i] is not None:
-                results[i] = json.loads(results[i])
+            if result is not None:
+                results[i] = json.loads(result)
         return results
 
     def set_service_results(self, service_key: str, results_dict: dict):

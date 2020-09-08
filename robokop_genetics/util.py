@@ -7,6 +7,17 @@ class LoggingUtil(object):
     """ Logging utility controlling format and setting initial logging level """
 
     @staticmethod
+    def get_logging_path():
+        if 'ROBO_GENETICS_HOME' in os.environ:
+            return f'{os.environ["ROBO_GENETICS_HOME"]}/'
+        elif 'ROBOKOP_HOME' in os.environ:
+            return f'{os.environ["ROBOKOP_HOME"]}/logs/'
+        elif 'RAGS_HOME' in os.environ:
+            return f'{os.environ["RAGS_HOME"]}/logs/'
+        else:
+            return None
+
+    @staticmethod
     def init_logging(name, level=logging.INFO, line_format='short', log_file_path=None, log_file_level=None):
         """
             Logging utility controlling format and setting initial logging level
@@ -64,6 +75,7 @@ class LoggingUtil(object):
 
         # return to the caller
         return logger
+
 
 class Text:
     """ Utilities for processing text. """
