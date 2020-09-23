@@ -24,50 +24,57 @@ class MyVariantService(object):
         self.hgnc_service = hgnc_service if hgnc_service else HGNCService(log_file_path)
 
     def batch_sequence_variant_to_gene(self, variant_dict):
-        if len(variant_dict) <= 1000:
-            annotation_dictionary = {}
-            post_params = {'fields': self.url_fields, 'ids': '', 'assembly': 'hg38'}
-            id_lookup = {}
-            for variant_id, variant_synonyms in variant_dict.items():
-                # default to empty result for invalid or missing IDs
-                annotation_dictionary[variant_id] = []
-                # we could support hg19 as well, but calls need to be all one or the other
-                # for now we only do hg38
-                myvariant_curies = Text.get_curies_by_prefix('MYVARIANT_HG38', variant_synonyms)
-                if not myvariant_curies:
-                    self.logger.info(f'No MYVARIANT_HG38 synonym found for: {variant_id}')
-                else:
-                    for myvar_curie in myvariant_curies:
-                        myvar_id = Text.un_curie(myvar_curie)
-                        post_params['ids'] += f'{myvar_id},'
-                        id_lookup[myvar_id] = variant_id
 
-            if not post_params['ids']:
-                self.logger.warning('batch_sequence_variant_to_gene called but all nodes provided had no MyVariant IDs')
-                return annotation_dictionary
+        reverse_id_lookup = {}
+        annotation_dictionary = {}
+        post_param_ids = []
+        found_myvariant_ids = False
+        for variant_id, variant_synonyms in variant_dict.items():
+            # default to empty result for invalid or missing IDs
+            annotation_dictionary[variant_id] = []
+            # for now we only support assembly hg38
+            # we could support hg19 as well, but calls need to be all one or the other
+            myvariant_curies = Text.get_curies_by_prefix('MYVARIANT_HG38', variant_synonyms)
+            for myvar_curie in myvariant_curies:
+                myvar_id = Text.un_curie(myvar_curie)
+                post_param_ids.append(f'{myvar_id}')
+                reverse_id_lookup[myvar_id] = variant_id
+                if len(post_param_ids) == 1000:
+                    found_myvariant_ids = True
+                    self.call_myvariant_service(post_param_ids, annotation_dictionary, reverse_id_lookup)
+                    post_param_ids = []
 
-            # remove that extra comma
-            post_params['ids'] = post_params['ids'][:-1]
-            query_url = f'{self.url}variant'
-            query_response = requests.post(query_url, data=post_params)
-            if query_response.status_code == 200:
-                query_json = query_response.json()
-                for annotation_json in query_json:
-                    try:
-                        myvar_id = annotation_json['_id']
-                        myvar_curie = f'MYVARIANT_HG38:{myvar_id}'
-                        variant_id = id_lookup[myvar_id]
-                        results = self.process_annotation(variant_id, annotation_json, myvar_curie)
-                        if results:
-                            annotation_dictionary[variant_id].extend(results)
-                    except KeyError as e:
-                        self.logger.warning(f'MyVariant batch call failed for annotation: {annotation_json["query"]} ({e})')
-            else:
-                self.logger.error(f'MyVariant batch non-200 response: ({query_response.status_code}) ids: ({post_params["ids"]})')
-            return annotation_dictionary
+        if post_param_ids:
+            self.call_myvariant_service(post_param_ids, annotation_dictionary, reverse_id_lookup)
+        elif not found_myvariant_ids:
+            self.logger.warning('batch_sequence_variant_to_gene called but none of the nodes had MyVariant IDs')
+
+        return annotation_dictionary
+
+    def call_myvariant_service(self, post_param_ids: list, annotation_dictionary: dict, reverse_id_lookup: dict):
+
+        post_params = {'fields': self.url_fields, 'ids': ','.join(post_param_ids), 'assembly': 'hg38'}
+        query_url = f'{self.url}variant'
+        query_response = requests.post(query_url, data=post_params)
+        if query_response.status_code == 200:
+            query_json = query_response.json()
+            for annotation_json in query_json:
+                try:
+                    myvar_id = annotation_json['_id']
+                    myvar_curie = f'MYVARIANT_HG38:{myvar_id}'
+                    variant_id = reverse_id_lookup[myvar_id]
+                    results = self.process_annotation(variant_id, annotation_json, myvar_curie)
+                    if results:
+                        annotation_dictionary[variant_id].extend(results)
+                except KeyError as e:
+                    self.logger.warning(f'MyVariant batch call failed for annotation: {annotation_json["query"]} ({e})')
+        elif query_response.status_code == 400:
+            error_message = query_response.json()['error']
+            self.logger.error(f'MyVariant 400 response: ({error_message}))')
         else:
-            raise Exception('Error: More than 1000 variants not supported for MyVariant batch call.')
-            return None
+            self.logger.error(f'MyVariant batch non-200 response: ({query_response.status_code}))')
+
+        return query_response.status_code
 
     def sequence_variant_to_gene(self, variant_id: str, variant_synonyms: set):
         return_results = []

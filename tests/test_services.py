@@ -165,8 +165,13 @@ def test_services_with_nodes(genetics_services):
 
     results_for_node_6 = all_results[node6.id]
     identifiers = [node.id for edge, node in results_for_node_6]
+    # these are from ensembl
     assert 'ENSEMBL:ENSG00000186092' in identifiers
     assert 'ENSEMBL:ENSG00000240361' in identifiers
+    # these are from myvariant
+    assert 'HGNC:14825' in identifiers
+    p_ids = [edge.predicate_id for edge, node in results_for_node_6]
+    assert 'SNPEFF:start_lost' in p_ids
 
     results_for_node_4 = all_results[node4.id]
     identifiers = [node.id for edge, node in results_for_node_4]
@@ -176,3 +181,9 @@ def test_services_with_nodes(genetics_services):
 
     results_for_node_7 = all_results[node7.id]
     assert not results_for_node_7
+
+
+def test_myvariant_error(genetics_services):
+    too_many_ids = [f'a:{i}' for i in range(1100)]
+    result = genetics_services.myvariant.call_myvariant_service(too_many_ids, {}, {})
+    assert result == 400

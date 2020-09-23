@@ -46,35 +46,52 @@ class GeneticsServices(object):
                         all_results[node.id].extend(cached_result)
                     else:
                         nodes_that_need_results.append(node)
-                self.logger.info(
-                    f'{service} variant to gene found results for {len(variant_nodes) - len(nodes_that_need_results)} nodes in the cache.')
+                self.logger.info(f'{service} variant to gene found results for {len(variant_nodes) - len(nodes_that_need_results)} nodes in the cache.')
             else:
                 nodes_that_need_results = variant_nodes
 
             if service == MYVARIANT:
-                node_chunks = [nodes_that_need_results[i:i + 1000] for i in range(0, len(nodes_that_need_results), 1000)]
-                for node_chunk in node_chunks:
-                    variant_dict = {}
-                    for node in node_chunk:
-                        variant_dict[node.id] = node.get_synonyms_by_prefix('MYVARIANT_HG38')
-                    new_myvariant_results = self.batch_query_variant_to_gene(MYVARIANT, variant_dict)
+                # send batches to myvariant
+                counter = 0
+                myvariant_syn_dict = {}
+                for node in nodes_that_need_results:
+                    myvariant_syn_dict[node.id] = node.synonyms
+                    counter += 1
+                    # this batch size is pretty arbitrary
+                    # myvariant really sends batches of 1000
+                    # but we can probably cache more at a time
+                    if counter == 10000:
+                        new_myvariant_results = self.batch_query_variant_to_gene(MYVARIANT, myvariant_syn_dict)
+                        for node_id, results in new_myvariant_results.items():
+                            all_results[node_id].extend(results)
+                        if self.cache:
+                            self.cache.set_service_results(cache_key, new_myvariant_results)
+                        counter = 0
+                        myvariant_syn_dict = {}
+                if counter > 0:
+                    new_myvariant_results = self.batch_query_variant_to_gene(MYVARIANT, myvariant_syn_dict)
                     for node_id, results in new_myvariant_results.items():
                         all_results[node_id].extend(results)
                     if self.cache:
-                        self.logger.info(f'Storing {len(new_myvariant_results)} myvariant results in the cache.')
                         self.cache.set_service_results(cache_key, new_myvariant_results)
+
             elif service == ENSEMBL:
                 new_ensembl_results = {}
+                counter = 0
                 for node in nodes_that_need_results:
                     variant_id = node.id
                     variant_syns = node.get_synonyms_by_prefix('ROBO_VARIANT')
                     new_ensembl_results[variant_id] = self.ensembl.sequence_variant_to_gene(variant_id, variant_syns)
                     all_results[variant_id].extend(new_ensembl_results[variant_id])
-                if self.cache:
-                    self.logger.info(f'Storing {len(new_ensembl_results)} ensembl results in the cache.')
-                    self.cache.set_service_results(cache_key, new_ensembl_results)
-        return all_results
+                    counter += 1
+                    if counter == 10000 and self.cache:
+                        self.cache.set_service_results(cache_key, new_ensembl_results)
+                        counter = 0
 
+                if counter > 0 and self.cache:
+                    self.cache.set_service_results(cache_key, new_ensembl_results)
+
+        return all_results
 
     # service: the service to query (from ALL_VARIANT_TO_GENE_SERVICES)
     # variant_id: plain curie string
