@@ -11,7 +11,7 @@ ROBO_GENETICS_CACHE_PASSWORD=yourpassword
 ```
 
 #### Logging and Temporary Files
-Robokop-genetics depends on a local directory with write permissions for temporary files and logging.
+robokop-genetics depends on a local directory with write permissions for temporary files and logging.
 
 When used in conjunction with robo-commons or robokop-rags, the default robokop home directory will be used. 
 
