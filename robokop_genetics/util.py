@@ -8,12 +8,14 @@ class LoggingUtil(object):
 
     @staticmethod
     def get_logging_path():
-        if 'ROBO_GENETICS_HOME' in os.environ:
-            return f'{os.environ["ROBO_GENETICS_HOME"]}/'
-        elif 'ROBOKOP_HOME' in os.environ:
-            return f'{os.environ["ROBOKOP_HOME"]}/logs/'
+        if 'ROBO_GENETICS_LOGS' in os.environ:
+            return f'{os.environ["ROBO_GENETICS_LOGS"]}/'
+        elif 'DATA_SERVICES_LOGS' in os.environ:
+            return f'{os.environ["DATA_SERVICES_LOGS"]}/'
         elif 'RAGS_HOME' in os.environ:
             return f'{os.environ["RAGS_HOME"]}/logs/'
+        elif 'ROBOKOP_HOME' in os.environ:
+            return f'{os.environ["ROBOKOP_HOME"]}/logs/'
         else:
             return None
 
