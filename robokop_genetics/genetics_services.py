@@ -15,11 +15,12 @@ BATCHABLE_VARIANT_TO_GENE_SERVES = [MYVARIANT]
 
 class GeneticsServices(object):
 
+    logger = LoggingUtil.init_logging(__name__,
+                                      logging.INFO,
+                                      log_file_path=LoggingUtil.get_logging_path())
+
     def __init__(self, use_cache: bool=True):
-        log_file_path = LoggingUtil.get_logging_path()
-        self.logger = LoggingUtil.init_logging(__name__,
-                                               logging.INFO,
-                                               log_file_path=log_file_path)
+
         if use_cache:
             self.cache = GeneticsCache()
             self.logger.info('Robokop Genetics Services initialized with cache activated.')
@@ -29,7 +30,7 @@ class GeneticsServices(object):
 
         self.hgnc = HGNCService()
         self.myvariant = MyVariantService(hgnc_service=self.hgnc)
-        self.ensembl = EnsemblService(temp_dir=log_file_path)
+        self.ensembl = EnsemblService(temp_dir=LoggingUtil.get_logging_path())
 
     def get_variant_to_gene(self, services: list, variant_nodes: list):
         self.logger.info(f'Get variant to gene called on {len(variant_nodes)} nodes.')

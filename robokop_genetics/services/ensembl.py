@@ -12,12 +12,12 @@ EnsemblGene = namedtuple('EnsemblGene', ['ensembl_id', 'ensembl_name', 'chromoso
 
 
 class EnsemblService(object):
+
+    logger = LoggingUtil.init_logging(__name__,
+                                      logging.INFO,
+                                      log_file_path=LoggingUtil.get_logging_path())
     
     def __init__(self, temp_dir: str=None):
-        log_file_path = LoggingUtil.get_logging_path()
-        self.logger = LoggingUtil.init_logging(__name__,
-                                               logging.INFO,
-                                               log_file_path=log_file_path)
 
         self.upstream_gene_predicate_id = 'SNPEFF:upstream_gene_variant'
         self.upstream_gene_predicate_label = 'upstream_gene_variant'
@@ -236,12 +236,12 @@ class EnsemblService(object):
             all_gene_annotations = {}
             for gene in ensembl_genes:
                 all_gene_annotations[gene.ensembl_id] = {
-                    'name' : gene.ensembl_name,
-                    'chromosome' : gene.chromosome,
-                    'start_position' : gene.start_position,
-                    'end_position' : gene.end_position,
-                    'gene_biotype' : gene.gene_biotype,
-                    'description' : gene.description
+                    'name': gene.ensembl_name,
+                    'chromosome': gene.chromosome,
+                    'start_position': gene.start_position,
+                    'end_position': gene.end_position,
+                    'gene_biotype': gene.gene_biotype,
+                    'description': gene.description
                 }
             self.all_gene_annotations = all_gene_annotations
             return all_gene_annotations
