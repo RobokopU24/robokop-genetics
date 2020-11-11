@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="robokop-genetics",
-    version="0.2.0",
+    version="0.3.0",
     author="Evan Morris",
     author_email="evandietzmorris@gmail.com",
     description="A package for Robokop genetics tools and services.",
@@ -18,6 +18,6 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    python_requires='>=3.7',
+    python_requires='>=3.8',
     install_requires=["requests", "redis"]
 )
