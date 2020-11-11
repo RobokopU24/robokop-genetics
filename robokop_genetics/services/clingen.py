@@ -2,111 +2,106 @@ import robokop_genetics.node_types as node_types
 from robokop_genetics.simple_graph_components import SimpleNode
 from robokop_genetics.util import Text, LoggingUtil
 from math import ceil
-from typing import Set
 import logging
 import requests
+
+# other classes should check this list before calling get_batch_of_synonyms
+batchable_variant_curie_prefixes = ["CAID",
+                                    "HGVS",
+                                    "MYVARIANT_HG38"]
+# other options include ExAC.id or gnomAD.id, but we're not using those yet
+curie_to_post_param_lookup = {
+    "CAID": "id",
+    "HGVS": "hgvs",
+    "MYVARIANT_HG38": "MyVariantInfo_hg38.id"
+}
 
 
 class ClinGenService(object):
 
+    logger = LoggingUtil.init_logging(__name__,
+                                      logging.INFO,
+                                      log_file_path=LoggingUtil.get_logging_path())
+
     def __init__(self):
-        log_file_path = LoggingUtil.get_logging_path()
-        self.logger = LoggingUtil.init_logging(__name__,
-                                               logging.INFO,
-                                               log_file_path=log_file_path)
         self.url = 'https://reg.genome.network/'
         self.synon_fields_param = 'fields=none+@id+externalRecords.dbSNP+externalRecords.ClinVarVariations+externalRecords.MyVariantInfo_hg38+genomicAlleles-genomicAlleles.referenceSequence'
 
-    def get_batch_of_synonyms(self, variant_list, variant_format="hgvs"):
-        # possible variant_format values not implemented yet
-        # would only need to switch prefix for building synonym dictionary
-        # id (CA ID or PA ID)
-        # MyVariantInfo_hg19.id
-        # MyVariantInfo_hg38.id
-        # ExAC.id
-        # gnomAD.id
-        if not variant_list:
+    #
+    # Important note: Provide a list of variant curies with the same prefix (ie. all HGVS or all CAID but not mixed)
+    # That prefix must be one from the list: batchable_variant_curie_prefixes
+    #
+    def get_batch_of_synonyms(self, variant_curie_list: list):
+        """
+        Given a list of variant curies, return a corresponding list of sets of equivalent identifiers.
+
+        ClinGenService.batchable_curie_prefixes provides a list of valid curie prefixes.
+
+        :param variant_curie_list: a list of variant curies (with the same prefix)
+        :return: a list of sets of equivalent identifiers - one for each variant curie supplied
+        """
+        if not variant_curie_list:
             return []
+
+        curie_prefix = Text.get_curie(variant_curie_list[0])
+        if curie_prefix not in batchable_variant_curie_prefixes:
+            raise NotImplementedError(f'ClinGenService not able to support batches of {curie_prefix}!')
+
+        variant_format_param = curie_to_post_param_lookup[curie_prefix]
+
+        variant_id_list = [Text.un_curie(variant_curie) for variant_curie in variant_curie_list]
 
         separator = '\n'
         results_list = []
-        batches = ceil(len(variant_list) / 2000)
+        batches = ceil(len(variant_id_list) / 2000)
         for i in range(batches):
-            variant_subset = variant_list[i * 2000:i * 2000 + 2000]
-            hgvs_pseudo_file = separator.join(variant_subset)
-            query_url = f'{self.url}alleles?file={variant_format}&{self.synon_fields_param}'
-            all_alleles_json = self.query_service(query_url, data=hgvs_pseudo_file)
+            variant_subset = variant_id_list[i * 2000:i * 2000 + 2000]
+            variant_pseudo_file = separator.join(variant_subset)
+            query_url = f'{self.url}alleles?file={variant_format_param}&{self.synon_fields_param}'
+            all_alleles_json = self.query_service(query_url, data=variant_pseudo_file)
             for index, allele_json in enumerate(all_alleles_json):
                 results_list.append(self.parse_allele_json_for_synonyms(allele_json))
         return results_list
 
-    def get_synonyms_by_caid(self, caid):
-        synonyms = set()
-        query_url = f'{self.url}allele/{caid}?{self.synon_fields_param}'
-        allele_json = self.query_service(query_url)
-        if allele_json:
-            synonyms.update(self.parse_allele_json_for_synonyms(allele_json))
-        return synonyms
+    def get_synonyms_by_other_id(self, variant_curie: str):
+        variant_id_no_curie = Text.un_curie(variant_curie)
+        variant_curie_prefix = Text.get_curie(variant_curie)
+        if variant_curie_prefix.startswith('DBSNP'):
+            possible_allele_preference = variant_id_no_curie.split("-")
+            if len(possible_allele_preference) > 1:
+                allele_preference = possible_allele_preference[1]
+                variant_id_no_curie = possible_allele_preference[0]
+            else:
+                allele_preference = None
+            return self.get_synonyms_by_parameter_matching('dbSNP.rs', variant_id_no_curie, allele_preference=allele_preference)
 
-    def get_synonyms_by_hgvs(self, hgvs_id):
-        synonyms = set()
-        query_url = f'{self.url}allele?hgvs={hgvs_id}&{self.synon_fields_param}'
-        allele_json = self.query_service(query_url)
-        if allele_json:
-            synonyms.update(self.parse_allele_json_for_synonyms(allele_json))
-        return synonyms
+        elif variant_curie_prefix.startswith('CLINVARVARIANT'):
+            return self.get_synonyms_by_parameter_matching('ClinVar.variationId', variant_id_no_curie)
 
-    def get_synonyms_by_rsid_with_sequence(self, rsid):
-        if rsid.startswith('rs'):
-            rsid = rsid[2:]
+        else:
+            self.logger.debug(f'ClinGenService not able to support curie prefix {variant_curie_prefix}!')
+            return None
 
-        return self.get_synonyms_by_parameter_matching('dbSNP.rs', rsid)
-
-    def get_synonyms_by_other_ids(self, synonym_set: Set):
-        # Just looking for 1 hit because any hit should return all of the available synonyms and caid if they exist
-        hgvs_ids = Text.get_curies_by_prefix('HGVS', synonym_set)
-        if hgvs_ids:
-            for hgvs_id in hgvs_ids:
-                synonyms = self.get_synonyms_by_hgvs(Text.un_curie(hgvs_id))
-                if synonyms: return synonyms
-
-        dbsnp_ids = Text.get_curies_by_prefix('DBSNP', synonym_set)
-        if dbsnp_ids:
-            for dbsnp_id in dbsnp_ids:
-                rsid = Text.un_curie(dbsnp_id)
-                if rsid.startswith('rs'):
-                    synonyms = self.get_synonyms_by_parameter_matching('dbSNP.rs', rsid[2:])
-                    if synonyms: return synonyms
-
-        clinvar_ids = Text.get_curies_by_prefix('CLINVARVARIANT', synonym_set)
-        if clinvar_ids:
-            for clinvar_id in clinvar_ids:
-                synonyms = self.get_synonyms_by_parameter_matching('ClinVar.variationId', Text.un_curie(clinvar_id))
-                if synonyms: return synonyms
-
-        myvariant_hg38_ids = Text.get_curies_by_prefix('MYVARIANT_HG38', synonym_set)
-        if myvariant_hg38_ids:
-            for myvariant_id in myvariant_hg38_ids:
-                synonyms = self.get_synonyms_by_parameter_matching('MyVariantInfo_hg38.id', Text.un_curie(myvariant_id))
-                if synonyms: return synonyms
-
-        myvariant_hg19_ids = Text.get_curies_by_prefix('MYVARIANT_HG19', synonym_set)
-        if myvariant_hg19_ids:
-            for myvariant_id in myvariant_hg19_ids:
-                synonyms = self.get_synonyms_by_parameter_matching('MyVariantInfo_hg19.id', Text.un_curie(myvariant_id))
-                if synonyms: return synonyms
-
-        return set()
-
-    def get_synonyms_by_parameter_matching(self, url_param, url_param_value):
-        synonyms = set()
+    def get_synonyms_by_parameter_matching(self, url_param: str, url_param_value: str, allele_preference: str = None):
+        synonym_sets = []
         query_url = f'{self.url}alleles?{url_param}={url_param_value}&{self.synon_fields_param}'
         query_json = self.query_service(query_url)
         for allele_json in query_json:
-            synonyms.update(self.parse_allele_json_for_synonyms(allele_json))
-        return synonyms
+            synonym_sets.append(self.parse_allele_json_for_synonyms(allele_json))
+        if allele_preference:
+            filtered_syn_sets = []
+            for syn_set in synonym_sets:
+                robo_ids = Text.get_curies_by_prefix('ROBO_VARIANT', syn_set)
+                if robo_ids:
+                    actual_allele = robo_ids.pop().split('|')[-1]
+                    if actual_allele == allele_preference:
+                        filtered_syn_sets.append(syn_set)
+            if filtered_syn_sets:
+                return filtered_syn_sets
 
-    def parse_allele_json_for_synonyms(self, allele_json):
+        return synonym_sets
+
+    def parse_allele_json_for_synonyms(self, allele_json: dict):
         synonyms = set()
         try:
             variant_caid = allele_json['@id'].rsplit('/', 1)[1]
@@ -180,15 +175,36 @@ class ClinGenService(object):
                 break
         return return_results
 
-    def query_service(self, query_url, data=None):
-        if data:
-            query_response = requests.post(query_url, data=data)
-        else:
-            query_response = requests.get(query_url)
-        if query_response.status_code != 200:
-            error_message = f'ClinGen returned a non-200 response({query_response.status_code}) calling ({query_url})'
-            self.logger.warning(error_message)
-            return {}
-        else:
-            query_json = query_response.json()
-            return query_json
+    def query_service(self, query_url, data=None, retries=1):
+        if retries > 3:
+            error_message = f'ClinGen Service tried but did not work for url: {query_url}'
+            self.logger.error(error_message)
+            raise requests.RequestException(error_message)
+        try:
+            if data:
+                query_response = requests.post(query_url, data=data)
+            else:
+                query_response = requests.get(query_url)
+            response_status_code = query_response.status_code
+            if response_status_code != 200:
+                if response_status_code == 404:
+                    return {}
+                else:
+                    # this is probably a messed up request / our fault, skip retries
+                    error_json = query_response.json()
+                    cg_error_type = error_json["errorType"]
+                    cg_error_description = error_json["description"]
+                    cg_error_message = error_json["message"] if "message" in error_json else ""
+                    error_message = f'ClinGen returned a 400 (bad request) calling ({query_url}):'
+                    error_message += f'{cg_error_type} - {cg_error_description} - {cg_error_message}'
+                    self.logger.error(error_message)
+                    return self.query_service(query_url, data, 4)
+
+            else:
+                query_json = query_response.json()
+                return query_json
+
+        except requests.exceptions.RequestException as re:
+            self.logger.error(f'Clingen service caught a request exception ({re}) on attempt number {retries}..')
+            return self.query_service(query_url, data, retries + 1)
+

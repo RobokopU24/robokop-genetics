@@ -8,6 +8,10 @@ from robokop_genetics.simple_graph_components import SimpleEdge, SimpleNode
 
 class GeneticsCache:
 
+    logger = LoggingUtil.init_logging(__name__,
+                                      logging.INFO,
+                                      log_file_path=LoggingUtil.get_logging_path())
+
     def __init__(self,
                  use_default_credentials: bool = True,
                  redis_host: str = "localhost",
@@ -16,17 +20,14 @@ class GeneticsCache:
                  redis_password: str = "",
                  prefix: str = ""):
         self.NORMALIZATION_KEY_PREFIX = f'{prefix}normalize-'
-        log_file_path = LoggingUtil.get_logging_path()
-        self.logger = LoggingUtil.init_logging(__name__,
-                                               logging.INFO,
-                                               log_file_path=log_file_path)
+
         if use_default_credentials:
             try:
                 redis_host = os.environ['ROBO_GENETICS_CACHE_HOST']
                 redis_port = os.environ['ROBO_GENETICS_CACHE_PORT']
                 redis_db = os.environ['ROBO_GENETICS_CACHE_DB']
                 redis_password = os.environ['ROBO_GENETICS_CACHE_PASSWORD']
-            except KeyError as key_ex:
+            except KeyError:
                 self.logger.warning('ROBO_GENETICS_CACHE environment variables not set. No cache activated.')
                 raise Exception("Cache requested but ROBO_GENETICS_CACHE environment variables not set!")
 
@@ -46,22 +47,22 @@ class GeneticsCache:
             self.logger.error(f"Genetics cache failed to connect to redis at {redis_host}:{redis_port}/{redis_db}.")
             raise e
 
-    def set_normalization(self, node_id: str, normalization: tuple):
-        normalization_key = f'{self.NORMALIZATION_KEY_PREFIX}{node_id}'
-        self.redis.set(normalization_key, json.dumps(normalization))
+    #def set_normalization(self, node_id: str, normalization: tuple):
+    #    normalization_key = f'{self.NORMALIZATION_KEY_PREFIX}{node_id}'
+    #    self.redis.set(normalization_key, json.dumps(normalization))
 
-    def set_batch_normalization(self, batch_dict: dict):
+    def set_batch_normalization(self, normalization_map: dict):
         pipeline = self.redis.pipeline()
-        for node_id, normalization in batch_dict.items():
+        for node_id, normalization in normalization_map.items():
             normalization_key = f'{self.NORMALIZATION_KEY_PREFIX}{node_id}'
             pipeline.set(normalization_key, json.dumps(normalization))
         pipeline.execute()
 
-    def get_normalization(self, node_id: str):
-        normalization_key = f'{self.NORMALIZATION_KEY_PREFIX}{node_id}'
-        result = self.redis.get(normalization_key)
-        normalization = json.loads(result) if result is not None else None
-        return normalization
+    #def get_normalization(self, node_id: str):
+    #    normalization_key = f'{self.NORMALIZATION_KEY_PREFIX}{node_id}'
+    #    result = self.redis.get(normalization_key)
+    #    normalization = json.loads(result) if result is not None else None
+    #    return normalization
 
     def get_batch_normalization(self, node_ids: list):
         pipeline = self.redis.pipeline()
@@ -70,10 +71,11 @@ class GeneticsCache:
             pipeline.get(normalization_key)
         results = pipeline.execute()
 
+        normalization_map = {}
         for i, result in enumerate(results):
             if result is not None:
-                results[i] = json.loads(result)
-        return results
+                normalization_map[node_ids[i]] = json.loads(result)
+        return normalization_map
 
     def set_service_results(self, service_key: str, results_dict: dict):
         pipeline = self.redis.pipeline()
