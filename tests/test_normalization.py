@@ -20,6 +20,7 @@ def genetics_normalizer():
 def clingen_service():
     return ClinGenService()
 
+
 def test_errors(clingen_service):
 
     with pytest.raises(requests.exceptions.RequestException) as re:
@@ -28,7 +29,6 @@ def test_errors(clingen_service):
     unsupported_ids = ['DBSNP:CA128085', 'DBSNP:rs10791957']
     with pytest.raises(NotImplementedError):
         clingen_service.get_batch_of_synonyms(unsupported_ids)
-
 
 
 def test_one_at_a_time_normalization(genetics_normalizer):
@@ -123,6 +123,9 @@ def test_batch_normalization(genetics_normalizer):
     normalization_info = batch_normalizations['HGVS:NC_000011.10:g.68032291C>G'].pop()
     assert normalization_info["id"] == 'CAID:CA6146346'
     assert normalization_info["name"] == 'rs369602258'
+    assert node_types.SEQUENCE_VARIANT in normalization_info["type"]
+    assert node_types.NAMED_THING in normalization_info["type"]
+    assert node_types.MOLECULAR_ENTITY in normalization_info["type"]
 
     normalization_info = batch_normalizations['HGVS:NC_000023.9:g.32317682G>A'].pop()
     assert normalization_info["id"] == 'CAID:CA267021'
@@ -175,3 +178,7 @@ def test_mixed_normalization(genetics_normalizer):
     assert 'ROBO_VARIANT:HG38|11|68032290|68032291|G' in normalized_synonyms
 
     assert normalization_map['DBSNP:rs10791957'][0]["id"] == 'CAID:CA15722020'
+    normalized_node_types = normalization_map['DBSNP:rs10791957'][0]["type"]
+    assert node_types.SEQUENCE_VARIANT in normalized_node_types
+    assert node_types.NAMED_THING in normalized_node_types
+    assert node_types.MOLECULAR_ENTITY in normalized_node_types

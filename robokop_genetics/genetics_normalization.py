@@ -1,6 +1,6 @@
 from robokop_genetics.services.clingen import ClinGenService, batchable_variant_curie_prefixes
 from robokop_genetics.genetics_cache import GeneticsCache
-from robokop_genetics.node_types import node_types
+import robokop_genetics.node_types as node_types
 from robokop_genetics.util import LoggingUtil, Text
 import logging
 import requests
@@ -20,8 +20,7 @@ class GeneticsNormalizer(object):
             self.cache = None
             self.logger.info('Robokop Genetics Normalizer initialized with no cache activated.')
 
-        self.sequence_variant_node_types = None
-
+        self.sequence_variant_node_types = self.fetch_sequence_variant_node_types()
         self.clingen = ClinGenService()
 
     def get_sequence_variant_node_types(self):
@@ -29,17 +28,19 @@ class GeneticsNormalizer(object):
         Returns a list of all normalized node types for sequence variant nodes
         :return:
         """
-        if not self.sequence_variant_node_types:
-            bl_url = f"https://bl-lookup-sri.renci.org/bl/{node_types.SEQUENCE_VARIANT}/ancestors?version=latest"
-            with requests.session() as client:
-                response = client.get(bl_url)
-                if response.status_code == 200:
-                    self.sequence_variant_node_types = set(response.json() + [node_types.SEQUENCE_VARIANT])
-                else:
-                    self.sequence_variant_node_types = [node_types.NAMED_THING, node_types.SEQUENCE_VARIANT]
-                    self.logger.info(f'Failed bl-lookup for {node_types.SEQUENCE_VARIANT} ancestor types: ({response.status_code})')
-
         return self.sequence_variant_node_types
+
+    def fetch_sequence_variant_node_types(self):
+        bl_url = f"https://bl-lookup-sri.renci.org/bl/{node_types.SEQUENCE_VARIANT}/ancestors?version=latest"
+        with requests.session() as client:
+            response = client.get(bl_url)
+            if response.status_code == 200:
+                sequence_variant_node_types = set(response.json() + [node_types.SEQUENCE_VARIANT])
+            else:
+                sequence_variant_node_types = [node_types.NAMED_THING, node_types.SEQUENCE_VARIANT]
+                self.logger.info(
+                    f'Failed bl-lookup for {node_types.SEQUENCE_VARIANT} ancestor types: (response code: {response.status_code})')
+        return sequence_variant_node_types
 
     def normalize_variants(self, variant_ids: list):
         """
@@ -90,7 +91,8 @@ class GeneticsNormalizer(object):
                 normalization_dict = {
                     "id": normalized_id,
                     "name": normalized_name,
-                    "equivalent_identifiers": list(normalized_synonyms)
+                    "equivalent_identifiers": list(normalized_synonyms),
+                    "type": self.sequence_variant_node_types
                 }
                 normalizations.append(normalization_dict)
 
@@ -100,13 +102,15 @@ class GeneticsNormalizer(object):
     def get_batch_sequence_variant_normalization(self, curies: list):
         normalization_map = {}
         equivalent_ids = self.clingen.get_batch_of_synonyms(curies)
+        sequence_variant_node_types = self.sequence_variant_node_types
         for i, normalized_synonyms in enumerate(equivalent_ids):
             if normalized_synonyms:
                 normalized_id, normalized_name = self.get_id_and_name_from_synonyms(normalized_synonyms)
                 normalization_dict = {
                     "id": normalized_id,
                     "name": normalized_name,
-                    "equivalent_identifiers": list(normalized_synonyms)
+                    "equivalent_identifiers": list(normalized_synonyms),
+                    "type": sequence_variant_node_types
                 }
                 normalization_map[curies[i]] = [normalization_dict]
             else:
@@ -114,26 +118,24 @@ class GeneticsNormalizer(object):
         return normalization_map
 
     # extract the preferred curie and name from the synonym set
-    # we prefer CAID for the ID and DBSNP as the name if available
     def get_id_and_name_from_synonyms(self, synonyms: set):
-        normalized_id = None
+
+        # find the best ID available - prefer CAID over HGVS over anything else
         caid_curies = Text.get_curies_by_prefix('CAID', synonyms)
         if caid_curies:
-            caid_curie = caid_curies.pop()
-            normalized_id = caid_curie
-            normalized_name = Text.un_curie(caid_curie)
+            normalized_id = caid_curies.pop()
+        else:
+            hgvs_curies = Text.get_curies_by_prefix('HGVS', synonyms)
+            if hgvs_curies:
+                normalized_id = hgvs_curies.pop()
+            else:
+                # we didn't find a CAID or HGVS, just take the first one as an arbitrary id
+                normalized_id = next(iter(synonyms))
 
         rsid_curies = Text.get_curies_by_prefix('DBSNP', synonyms)
         if rsid_curies:
-            rsid_curie = rsid_curies.pop()
-            normalized_name = Text.un_curie(rsid_curie)
-            if not normalized_id:
-                normalized_id = rsid_curie
-
-        if not normalized_id:
-            # we didn't find a CAID or rsid, just take the first one as an arbitrary id/name
-            arbitrary_syn = next(iter(synonyms))
-            normalized_id = arbitrary_syn
-            normalized_name = Text.un_curie(arbitrary_syn)
+            normalized_name = Text.un_curie(rsid_curies.pop())
+        else:
+            normalized_name = Text.un_curie(normalized_id)
 
         return normalized_id, normalized_name

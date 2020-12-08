@@ -1,8 +1,9 @@
 import pytest
 
 from robokop_genetics.genetics_services import *
-from robokop_genetics.simple_graph_components import SimpleNode, SimpleEdge
+from robokop_genetics.simple_graph_components import SimpleNode
 import robokop_genetics.node_types as node_types
+
 
 @pytest.fixture()
 def genetics_services():
