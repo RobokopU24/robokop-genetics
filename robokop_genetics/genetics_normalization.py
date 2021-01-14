@@ -35,7 +35,7 @@ class GeneticsNormalizer(object):
         with requests.session() as client:
             response = client.get(bl_url)
             if response.status_code == 200:
-                sequence_variant_node_types = set(response.json() + [node_types.SEQUENCE_VARIANT])
+                sequence_variant_node_types = list(set(response.json() + [node_types.SEQUENCE_VARIANT]))
             else:
                 sequence_variant_node_types = [node_types.NAMED_THING, node_types.SEQUENCE_VARIANT]
                 self.logger.info(
