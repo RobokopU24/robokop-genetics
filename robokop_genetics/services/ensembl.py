@@ -220,7 +220,7 @@ class EnsemblService(object):
                               input_id=robokop_key_used,
                               predicate_id=predicate_id,
                               predicate_label=predicate_label,
-                              ctime=time.time(),
+                              ctime=1,
                               properties=props)
             results.append((edge, gene_node))
 
