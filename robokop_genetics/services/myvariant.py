@@ -21,7 +21,7 @@ class MyVariantService(object):
         #self.url_fields = 'snpeff.ann.effect,snpeff.ann.feature_type,snpeff.ann.gene_id'
         self.url_fields = 'snpeff.ann.effect,snpeff.ann.feature_type,snpeff.ann.genename'
 
-        self.hgnc_service = hgnc_service if hgnc_service else HGNCService(log_file_path)
+        self.hgnc_service = hgnc_service if hgnc_service else HGNCService()
 
     def batch_sequence_variant_to_gene(self, variant_dict):
 
