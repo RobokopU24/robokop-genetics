@@ -118,10 +118,11 @@ class ClinGenService(object):
                     if 'referenceGenome' in genomic_allele and genomic_allele['referenceGenome'] == 'GRCh38':
                         if 'chromosome' in genomic_allele:
                             sequence = genomic_allele['coordinates'][0]['allele']
+                            reference = genomic_allele['coordinates'][0]['referenceAllele']
                             chromosome = genomic_allele['chromosome']
                             start_position = genomic_allele['coordinates'][0]['start']
                             end_position = genomic_allele['coordinates'][0]['end']
-                            robokop_variant_id = f'HG38|{chromosome}|{start_position}|{end_position}|{sequence}'
+                            robokop_variant_id = f'HG38|{chromosome}|{start_position}|{end_position}|{reference}|{sequence}'
                             synonyms.add(f'ROBO_VARIANT:{robokop_variant_id}')
 
             except KeyError as e:

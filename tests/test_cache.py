@@ -84,12 +84,12 @@ def test_service_results_cache(genetics_cache, genetics_services):
     # TODO these service queries should be mocked instead of calling the service
     results_dict = {}
     node_id = 'CAID:CA279509'
-    robokop_variant_id = f'ROBO_VARIANT:HG38|17|58206171|58206172|A'
+    robokop_variant_id = f'ROBO_VARIANT:HG38|17|58206171|58206172|T|A'
     service_results = genetics_services.query_variant_to_gene(ENSEMBL, node_id, {node_id, robokop_variant_id})
     results_dict[node_id] = service_results
 
     node_id_2 = 'FAKECURIE:39'
-    robokop_variant_id = f'ROBO_VARIANT:HG38|X|32389643|32389644|A'
+    robokop_variant_id = f'ROBO_VARIANT:HG38|X|32389643|32389644|T|A'
     service_results = genetics_services.query_variant_to_gene(ENSEMBL, node_id_2, {node_id_2, robokop_variant_id})
     results_dict[node_id_2] = service_results
 

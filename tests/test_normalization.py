@@ -70,15 +70,17 @@ def test_one_at_a_time_normalization(genetics_normalizer):
     normalizations = genetics_normalizer.get_sequence_variant_normalization(node_id)
     assert len(normalizations) == 1
     assert normalizations[0]["id"] == "CAID:CA321211"
-    robo_ids = Text.get_curies_by_prefix('ROBO_VARIANT', normalizations[0]["equivalent_identifiers"])
-    assert robo_ids.pop().split('|')[-1] == 'T'
+    robo_id = Text.get_curies_by_prefix('ROBO_VARIANT', normalizations[0]["equivalent_identifiers"]).pop()
+    assert robo_id.split('|')[-1] == 'T'
+    assert robo_id.split('|')[-2] == 'C'
 
     node_id = "DBSNP:rs369602258-G"
     normalizations = genetics_normalizer.get_sequence_variant_normalization(node_id)
     assert len(normalizations) == 1
     assert normalizations[0]["id"] == "CAID:CA6146346"
-    robo_ids = Text.get_curies_by_prefix('ROBO_VARIANT', normalizations[0]["equivalent_identifiers"])
-    assert robo_ids.pop().split('|')[-1] == 'G'
+    robo_id = Text.get_curies_by_prefix('ROBO_VARIANT', normalizations[0]["equivalent_identifiers"]).pop()
+    assert robo_id.split('|')[-1] == 'G'
+    assert robo_id.split('|')[-2] == 'C'
 
 
 def test_batch_synonymization(clingen_service):
@@ -99,7 +101,7 @@ def test_batch_synonymization(clingen_service):
     synonyms = batch_synonymizations[1]
     assert 'CAID:CA267021' in synonyms
     assert 'DBSNP:rs398123953' in synonyms
-    assert 'ROBO_VARIANT:HG38|X|32389643|32389644|A' in synonyms
+    assert 'ROBO_VARIANT:HG38|X|32389643|32389644|G|A' in synonyms
 
     synonyms = batch_synonymizations[3]
     assert 'CAID:CA8609461' in synonyms
@@ -166,7 +168,7 @@ def test_mixed_normalization(genetics_normalizer):
     assert 'MYVARIANT_HG38:chrX:g.32389644G>A' in normalized_synonyms
     assert 'CLINVARVARIANT:94623' in normalized_synonyms
     assert 'DBSNP:rs398123953' in normalized_synonyms
-    assert 'ROBO_VARIANT:HG38|X|32389643|32389644|A' in normalized_synonyms
+    assert 'ROBO_VARIANT:HG38|X|32389643|32389644|G|A' in normalized_synonyms
 
     assert normalization_map['HGVS:NC_000011.10:g.68032291C>T'][0]["id"] == "CAID:CA321211"
     assert normalization_map['HGVS:NC_000011.10:g.68032291C>T'][0]["name"] == 'rs369602258'
@@ -175,7 +177,7 @@ def test_mixed_normalization(genetics_normalizer):
     assert normalization_map['HGVS:NC_000011.10:g.68032291C>G'][0]["name"] == 'rs369602258'
     normalized_synonyms = normalization_map['HGVS:NC_000011.10:g.68032291C>G'][0]["equivalent_identifiers"]
     assert 'HGVS:NC_000011.10:g.68032291C>G' in normalized_synonyms
-    assert 'ROBO_VARIANT:HG38|11|68032290|68032291|G' in normalized_synonyms
+    assert 'ROBO_VARIANT:HG38|11|68032290|68032291|C|G' in normalized_synonyms
 
     assert normalization_map['DBSNP:rs10791957'][0]["id"] == 'CAID:CA15722020'
     normalized_node_types = normalization_map['DBSNP:rs10791957'][0]["type"]

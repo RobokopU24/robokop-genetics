@@ -106,7 +106,7 @@ def test_batch_myvariant(genetics_services):
 
 def test_ensembl(genetics_services):
     # using hg38
-    robokop_variant_id = f'ROBO_VARIANT:HG38|17|58206171|58206172|A'
+    robokop_variant_id = f'ROBO_VARIANT:HG38|17|58206171|58206172|T|A'
     relations = genetics_services.query_variant_to_gene(ENSEMBL, 'CAID:CA279509', {robokop_variant_id})
     identifiers = [node.id for edge, node in relations]
     assert 'ENSEMBL:ENSG00000011143' in identifiers
@@ -118,19 +118,19 @@ def test_ensembl(genetics_services):
     assert 'SNPEFF:upstream_gene_variant' in predicate_ids
     assert 'SNPEFF:downstream_gene_variant' in predicate_ids
 
-    robokop_variant_id = f'ROBO_VARIANT:HG38|1|69092|69093|C'
+    robokop_variant_id = f'ROBO_VARIANT:HG38|1|69092|69093|T|C'
     relations = genetics_services.query_variant_to_gene(ENSEMBL, 'CAID:CA16728208', {robokop_variant_id})
     identifiers = [node.id for edge, node in relations]
     assert 'ENSEMBL:ENSG00000186092' in identifiers
     assert 'ENSEMBL:ENSG00000240361' in identifiers
 
-    robokop_variant_id = f'ROBO_VARIANT:HG38|1|11796321|11796322|A'
+    robokop_variant_id = f'ROBO_VARIANT:HG38|1|11796321|11796322|G|A'
     relations = genetics_services.query_variant_to_gene(ENSEMBL, 'CAID:CA170990', {robokop_variant_id})
     identifiers = [node.id for edge, node in relations]
     assert 'ENSEMBL:ENSG00000177000' in identifiers
     assert 'ENSEMBL:ENSG00000011021' in identifiers
 
-    robokop_variant_id = f'ROBO_VARIANT:HG38|X|32389643|32389644|A'
+    robokop_variant_id = f'ROBO_VARIANT:HG38|X|32389643|32389644|G|A'
     relations = genetics_services.query_variant_to_gene(ENSEMBL, 'CAID:CA267021', {robokop_variant_id})
     identifiers = [node.id for edge, node in relations]
     assert 'ENSEMBL:ENSG00000198947' in identifiers
@@ -142,10 +142,10 @@ def test_services_with_nodes(genetics_services):
     node1.synonyms = {"MYVARIANT_HG19:chr7:g.55241707G>T"}
     all_nodes.append(node1)
     node2 = SimpleNode(id="FAKECURIE:2", name="FakeName2", type=node_types.SEQUENCE_VARIANT)
-    node2.synonyms = {"ROBO_VARIANT:HG38|X|32389643|32389644|A"}
+    node2.synonyms = {"ROBO_VARIANT:HG38|X|32389643|32389644|T|A"}
     all_nodes.append(node2)
     node3 = SimpleNode(id="FAKECURIE:3", name="FakeName3", type=node_types.SEQUENCE_VARIANT)
-    node3.synonyms = {"ROBO_VARIANT:HG38|1|11796321|11796322|A"}
+    node3.synonyms = {"ROBO_VARIANT:HG38|1|11796321|11796322|T|A"}
     all_nodes.append(node3)
     node4 = SimpleNode(id="FAKECURIE:4", name="FakeName4", type=node_types.SEQUENCE_VARIANT)
     node4.synonyms = {"MYVARIANT_HG38:chrX:g.32389644G>A"}
@@ -154,7 +154,7 @@ def test_services_with_nodes(genetics_services):
     node5.synonyms = {"MYVARIANT_HG38:chr9:g.130489423A>G"}
     all_nodes.append(node5)
     node6 = SimpleNode(id="FAKECURIE:6", name="FakeName6", type=node_types.SEQUENCE_VARIANT)
-    node6.synonyms = {"ROBO_VARIANT:HG38|1|69092|69093|C", "MYVARIANT_HG38:chr1:g.69093G>C"}
+    node6.synonyms = {"ROBO_VARIANT:HG38|1|69092|69093|G|C", "MYVARIANT_HG38:chr1:g.69093G>C"}
     all_nodes.append(node6)
     node7 = SimpleNode(id="FAKECURIE:7", name="FakeName7", type=node_types.SEQUENCE_VARIANT)
     node7.synonyms = {"FAKECURIE:7"}
