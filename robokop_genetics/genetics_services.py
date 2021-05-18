@@ -87,6 +87,7 @@ class GeneticsServices(object):
                     counter += 1
                     if counter == 10000 and self.cache:
                         self.cache.set_service_results(cache_key, new_ensembl_results)
+                        new_ensembl_results = {}
                         counter = 0
 
                 if counter > 0 and self.cache:
