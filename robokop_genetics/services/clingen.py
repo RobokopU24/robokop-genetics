@@ -64,22 +64,21 @@ class ClinGenService(object):
         return results_list
 
     def get_synonyms_by_other_id(self, variant_curie: str):
-        variant_id_no_curie = Text.un_curie(variant_curie)
-        variant_curie_prefix = Text.get_curie(variant_curie)
-        if variant_curie_prefix.startswith('DBSNP'):
-            possible_allele_preference = variant_id_no_curie.split("-")
+        variant_id = variant_curie.split(':')[1]
+        if variant_curie.startswith('DBSNP'):
+            possible_allele_preference = variant_id.split("-")
             if len(possible_allele_preference) > 1:
                 allele_preference = possible_allele_preference[1]
-                variant_id_no_curie = possible_allele_preference[0]
+                variant_id = possible_allele_preference[0]
             else:
                 allele_preference = None
-            return self.get_synonyms_by_parameter_matching('dbSNP.rs', variant_id_no_curie, allele_preference=allele_preference)
+            return self.get_synonyms_by_parameter_matching('dbSNP.rs', variant_id, allele_preference=allele_preference)
 
-        elif variant_curie_prefix.startswith('CLINVARVARIANT'):
-            return self.get_synonyms_by_parameter_matching('ClinVar.variationId', variant_id_no_curie)
+        elif variant_curie.startswith('CLINVARVARIANT'):
+            return self.get_synonyms_by_parameter_matching('ClinVar.variationId', variant_id)
 
         else:
-            self.logger.debug(f'ClinGenService not able to support curie prefix {variant_curie_prefix}!')
+            self.logger.debug(f'ClinGenService not able to support curie prefix {variant_curie}!')
             return None
 
     def get_synonyms_by_parameter_matching(self, url_param: str, url_param_value: str, allele_preference: str = None):
@@ -130,16 +129,6 @@ class ClinGenService(object):
                 self.logger.info(error_message)
 
         if 'externalRecords' in allele_json:
-            if 'MyVariantInfo_hg19' in allele_json['externalRecords']:
-                for myvar_json in allele_json['externalRecords']['MyVariantInfo_hg19']:
-                    myvariant_id = myvar_json['id']
-                    synonyms.add(f'MYVARIANT_HG19:{myvariant_id}')
-
-            if 'MyVariantInfo_hg38' in allele_json['externalRecords']:
-                for myvar_json in allele_json['externalRecords']['MyVariantInfo_hg38']:
-                    myvariant_id = myvar_json['id']
-                    synonyms.add(f'MYVARIANT_HG38:{myvariant_id}')
-
             if 'dbSNP' in allele_json['externalRecords']:
                 for dbsnp_json in allele_json['externalRecords']['dbSNP']:
                     variant_rsid = dbsnp_json['rs']

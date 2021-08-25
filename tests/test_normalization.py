@@ -10,7 +10,6 @@ import requests
 """Check variant synonymization through the ClinGen Allele Registry (CAID)
 """
 
-
 @pytest.fixture()
 def genetics_normalizer():
     return GeneticsNormalizer(use_cache=False)
@@ -38,8 +37,6 @@ def test_one_at_a_time_normalization(genetics_normalizer):
     assert genetics_normalizer.get_sequence_variant_normalization(node_id) == []
     node_id = "HGVS:NC_000023.11:g.32389644G>A"
     assert genetics_normalizer.get_sequence_variant_normalization(node_id) == []
-    node_id = "MYVARIANT_HG38:chr11:g.68032291C>G"
-    assert genetics_normalizer.get_sequence_variant_normalization(node_id) == []
 
     node_id = "CLINVARVARIANT:18390"
     normalization_info = genetics_normalizer.get_sequence_variant_normalization(node_id).pop()
@@ -57,7 +54,8 @@ def test_one_at_a_time_normalization(genetics_normalizer):
     assert 'CAID:CA321211' in normalized_ids
     assert 'rs369602258' in normalized_names
 
-    # if the reference is specified - return all CAID and their synonym sets
+    # if the allele preference is not found as an alt allele (in this case it's the reference)
+    # return all CAID and their synonym sets
     node_id = "DBSNP:rs369602258-C"
     normalizations_2 = genetics_normalizer.get_sequence_variant_normalization(node_id)
     assert len(normalizations) == len(normalizations_2)
@@ -106,7 +104,6 @@ def test_batch_synonymization(clingen_service):
     synonyms = batch_synonymizations[3]
     assert 'CAID:CA8609461' in synonyms
     assert 'DBSNP:rs775219016' in synonyms
-    assert 'MYVARIANT_HG38:chr17:g.44931759del' in synonyms
 
     bad_result = batch_synonymizations[4]
     assert bad_result == set()
@@ -127,7 +124,7 @@ def test_batch_normalization(genetics_normalizer):
     assert normalization_info["name"] == 'rs369602258'
     assert node_types.SEQUENCE_VARIANT in normalization_info["type"]
     assert node_types.NAMED_THING in normalization_info["type"]
-    assert node_types.MOLECULAR_ENTITY in normalization_info["type"]
+    assert node_types.BIOLOGICAL_ENTITY in normalization_info["type"]
 
     normalization_info = batch_normalizations['HGVS:NC_000023.9:g.32317682G>A'].pop()
     assert normalization_info["id"] == 'CAID:CA267021'
@@ -136,7 +133,6 @@ def test_batch_normalization(genetics_normalizer):
     normalization_info = batch_normalizations['HGVS:NC_000017.10:g.43009127delG'].pop()
     assert normalization_info["id"] == 'CAID:CA8609461'
     assert normalization_info["name"] == 'rs775219016'
-    assert 'MYVARIANT_HG38:chr17:g.44931759del' in normalization_info["equivalent_identifiers"]
 
     bad_result = batch_normalizations['HGVS:NC_000001.40:fakehgvs.1231234A>C']
     assert bad_result == []
@@ -160,12 +156,10 @@ def test_mixed_normalization(genetics_normalizer):
     assert 'HGVS:NC_000012.12:g.111803962G>A' in normalized_synonyms
     assert 'CLINVARVARIANT:18390' in normalized_synonyms
     assert 'DBSNP:rs671' in normalized_synonyms
-    assert 'MYVARIANT_HG38:chr12:g.111803962G>A' in normalized_synonyms
 
     assert normalization_map['HGVS:NC_000023.11:g.32389644G>A'][0]["id"] == 'CAID:CA267021'
     assert normalization_map['HGVS:NC_000023.11:g.32389644G>A'][0]["name"] == 'rs398123953'
     normalized_synonyms = normalization_map['HGVS:NC_000023.11:g.32389644G>A'][0]["equivalent_identifiers"]
-    assert 'MYVARIANT_HG38:chrX:g.32389644G>A' in normalized_synonyms
     assert 'CLINVARVARIANT:94623' in normalized_synonyms
     assert 'DBSNP:rs398123953' in normalized_synonyms
     assert 'ROBO_VARIANT:HG38|X|32389643|32389644|G|A' in normalized_synonyms
@@ -183,4 +177,4 @@ def test_mixed_normalization(genetics_normalizer):
     normalized_node_types = normalization_map['DBSNP:rs10791957'][0]["type"]
     assert node_types.SEQUENCE_VARIANT in normalized_node_types
     assert node_types.NAMED_THING in normalized_node_types
-    assert node_types.MOLECULAR_ENTITY in normalized_node_types
+    assert node_types.BIOLOGICAL_ENTITY in normalized_node_types
