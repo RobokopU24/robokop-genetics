@@ -1,6 +1,6 @@
 GENE = 'biolink:Gene'
 NAMED_THING = 'biolink:NamedThing'
-MOLECULAR_ENTITY = 'biolink:MolecularEntity'
+BIOLOGICAL_ENTITY = 'biolink:BiologicalEntity'
 SEQUENCE_VARIANT = 'biolink:SequenceVariant'
 
 
