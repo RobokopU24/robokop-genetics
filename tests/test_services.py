@@ -24,6 +24,9 @@ def test_gene_symbol_to_id(genetics_services):
     assert gene_id is None
 
 
+"""
+These services are deprecated.. 
+
 def test_myvariant(genetics_services):
 
     relations = genetics_services.query_variant_to_gene(MYVARIANT, 'MYVARIANT_HG38:chr7:g.55174014G>T', {'MYVARIANT_HG38:chr7:g.55174014G>T'})
@@ -188,3 +191,4 @@ def test_myvariant_error(genetics_services):
     too_many_ids = [f'a:{i}' for i in range(1100)]
     result = genetics_services.myvariant.call_myvariant_service(too_many_ids, {}, {})
     assert result == 400
+"""
