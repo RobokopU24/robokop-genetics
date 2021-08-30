@@ -1,4 +1,4 @@
-from robokop_genetics.services.clingen import ClinGenService, batchable_variant_curie_prefixes
+from robokop_genetics.services.clingen import ClinGenService, ClinGenSynonymizationResult, batchable_variant_curie_prefixes
 from robokop_genetics.genetics_cache import GeneticsCache
 import robokop_genetics.node_types as node_types
 from robokop_genetics.util import LoggingUtil, Text
@@ -84,37 +84,49 @@ class GeneticsNormalizer(object):
     # variant_curie: the id of the variant that needs normalizing
     def get_sequence_variant_normalization(self, variant_curie: str):
         normalizations = []
-        normalized_synonym_groups = self.clingen.get_synonyms_by_other_id(variant_curie)
-        if normalized_synonym_groups:
-            for normalized_synonyms in normalized_synonym_groups:
-                normalized_id, normalized_name = self.get_id_and_name_from_synonyms(normalized_synonyms)
+        # Note that clingen.get_synonyms_by_other_id supports variants which may return multiple synonymization results.
+        # So here we may create more than one normalized node for each provided variant curie.
+        synonymization_results = self.clingen.get_synonyms_by_other_id(variant_curie)
+        for synonymization_result in synonymization_results:
+            if synonymization_result.success:
+                normalized_id, normalized_name = self.get_id_and_name_from_synonyms(synonymization_result.synonyms)
                 normalization_dict = {
                     "id": normalized_id,
                     "name": normalized_name,
-                    "equivalent_identifiers": list(normalized_synonyms),
+                    "equivalent_identifiers": list(synonymization_result.synonyms),
                     "type": self.sequence_variant_node_types
                 }
-                normalizations.append(normalization_dict)
-
+            else:
+                normalization_dict = {
+                    "error_type": synonymization_result.error_type,
+                    "error_message": synonymization_result.error_message,
+                }
+            normalizations.append(normalization_dict)
         return normalizations
 
     # Given a list of batchable curies with the same prefix, return a map of corresponding normalization information.
     def get_batch_sequence_variant_normalization(self, curies: list):
         normalization_map = {}
-        equivalent_ids = self.clingen.get_batch_of_synonyms(curies)
+        # Note that for batch normalization clingen only supports variant types which return a single set of synonyms,
+        # as opposed to potentially returning multiple sets such as when calling get_synonyms_by_other_id.
+        # Here we always only create one normalized node per provided ID.
+        synonymization_results = self.clingen.get_batch_of_synonyms(curies)
         sequence_variant_node_types = self.sequence_variant_node_types
-        for i, normalized_synonyms in enumerate(equivalent_ids):
-            if normalized_synonyms:
-                normalized_id, normalized_name = self.get_id_and_name_from_synonyms(normalized_synonyms)
+        for i, synonymization_result in enumerate(synonymization_results):
+            if synonymization_result.success:
+                normalized_id, normalized_name = self.get_id_and_name_from_synonyms(synonymization_result.synonyms)
                 normalization_dict = {
                     "id": normalized_id,
                     "name": normalized_name,
-                    "equivalent_identifiers": list(normalized_synonyms),
+                    "equivalent_identifiers": list(synonymization_result.synonyms),
                     "type": sequence_variant_node_types
                 }
-                normalization_map[curies[i]] = [normalization_dict]
             else:
-                normalization_map[curies[i]] = []
+                normalization_dict = {
+                    "error_type": synonymization_result.error_type,
+                    "error_message": synonymization_result.error_message,
+                }
+            normalization_map[curies[i]] = [normalization_dict]
         return normalization_map
 
     # extract the preferred curie and name from the synonym set

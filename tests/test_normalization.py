@@ -2,7 +2,7 @@ import pytest
 
 from robokop_genetics.util import Text
 from robokop_genetics.genetics_normalization import GeneticsNormalizer
-from robokop_genetics.services.clingen import ClinGenService
+from robokop_genetics.services.clingen import ClinGenService, ClinGenSynonymizationResult, ClinGenQueryResponse
 import robokop_genetics.node_types as node_types
 
 import requests
@@ -22,8 +22,9 @@ def clingen_service():
 
 def test_errors(clingen_service):
 
-    with pytest.raises(requests.exceptions.RequestException) as re:
-        clingen_service.query_service(f'{clingen_service.url}alleles?thisisabrokenrequest!')
+    clingen_response: ClinGenQueryResponse = clingen_service.query_service(f'{clingen_service.url}alleles?thisisabrokenrequest!')
+    assert clingen_response.success is False
+    assert clingen_response.error_type == "IncorrectRequest"
 
     unsupported_ids = ['DBSNP:CA128085', 'DBSNP:rs10791957']
     with pytest.raises(NotImplementedError):
@@ -34,9 +35,11 @@ def test_one_at_a_time_normalization(genetics_normalizer):
 
     # Some curie types should never be normalized one at a time, these should all fail
     node_id = "CAID:CA128085"
-    assert genetics_normalizer.get_sequence_variant_normalization(node_id) == []
+    normalization_result = genetics_normalizer.get_sequence_variant_normalization(node_id).pop()
+    assert normalization_result['error_type'] == 'InefficientUsage'
     node_id = "HGVS:NC_000023.11:g.32389644G>A"
-    assert genetics_normalizer.get_sequence_variant_normalization(node_id) == []
+    normalization_results = genetics_normalizer.get_sequence_variant_normalization(node_id).pop()
+    assert normalization_result['error_type'] == 'InefficientUsage'
 
     node_id = "CLINVARVARIANT:18390"
     normalization_info = genetics_normalizer.get_sequence_variant_normalization(node_id).pop()
@@ -91,22 +94,24 @@ def test_batch_synonymization(clingen_service):
 
     batch_synonymizations = clingen_service.get_batch_of_synonyms(hgvs_ids)
 
-    synonyms = batch_synonymizations[0]
-    assert 'CAID:CA6146346' in synonyms
-    assert 'DBSNP:rs369602258' in synonyms
-    assert isinstance(synonyms, set)
+    synonymization_result: ClinGenSynonymizationResult = batch_synonymizations[0]
+    assert synonymization_result.success
+    assert 'CAID:CA6146346' in synonymization_result.synonyms
+    assert 'DBSNP:rs369602258' in synonymization_result.synonyms
+    assert isinstance(synonymization_result.synonyms, set)
 
-    synonyms = batch_synonymizations[1]
-    assert 'CAID:CA267021' in synonyms
-    assert 'DBSNP:rs398123953' in synonyms
-    assert 'ROBO_VARIANT:HG38|X|32389643|32389644|G|A' in synonyms
+    synonymization_result: ClinGenSynonymizationResult = batch_synonymizations[1]
+    assert 'CAID:CA267021' in synonymization_result.synonyms
+    assert 'DBSNP:rs398123953' in synonymization_result.synonyms
+    assert 'ROBO_VARIANT:HG38|X|32389643|32389644|G|A' in synonymization_result.synonyms
 
-    synonyms = batch_synonymizations[3]
-    assert 'CAID:CA8609461' in synonyms
-    assert 'DBSNP:rs775219016' in synonyms
+    synonymization_result: ClinGenSynonymizationResult = batch_synonymizations[3]
+    assert 'CAID:CA8609461' in synonymization_result.synonyms
+    assert 'DBSNP:rs775219016' in synonymization_result.synonyms
 
-    bad_result = batch_synonymizations[4]
-    assert bad_result == set()
+    synonymization_result: ClinGenSynonymizationResult = batch_synonymizations[4]
+    assert synonymization_result.success is False
+    assert synonymization_result.error_type == 'HgvsParsingError'
 
 
 def test_batch_normalization(genetics_normalizer):
@@ -134,8 +139,9 @@ def test_batch_normalization(genetics_normalizer):
     assert normalization_info["id"] == 'CAID:CA8609461'
     assert normalization_info["name"] == 'rs775219016'
 
-    bad_result = batch_normalizations['HGVS:NC_000001.40:fakehgvs.1231234A>C']
-    assert bad_result == []
+    normalization_info = batch_normalizations['HGVS:NC_000001.40:fakehgvs.1231234A>C'].pop()
+    assert 'error_type' in normalization_info
+    assert normalization_info['error_type'] == 'HgvsParsingError'
 
 
 def test_mixed_normalization(genetics_normalizer):
@@ -146,7 +152,8 @@ def test_mixed_normalization(genetics_normalizer):
                    'HGVS:NC_000011.10:g.68032291C>G',
                    'CLINVARVARIANT:18390',
                    'DBSNP:rs10791957',
-                   'BOGUS:rs999999999999']
+                   'BOGUS:rs999999999999',
+                   'DBSNP:rs199745043-AG']
 
     normalization_map = genetics_normalizer.normalize_variants(variant_ids)
 
@@ -178,3 +185,9 @@ def test_mixed_normalization(genetics_normalizer):
     assert node_types.SEQUENCE_VARIANT in normalized_node_types
     assert node_types.NAMED_THING in normalized_node_types
     assert node_types.BIOLOGICAL_ENTITY in normalized_node_types
+
+    assert normalization_map['DBSNP:rs199745043-AG'][0]["id"] == 'CAID:CA101278073'
+    assert len(normalization_map['DBSNP:rs199745043-AG']) == 1
+
+    assert normalization_map['BOGUS:rs999999999999'][0]["error_type"] == 'UnsupportedPrefix'
+    assert 'BOGUS' in normalization_map['BOGUS:rs999999999999'][0]["error_message"]
