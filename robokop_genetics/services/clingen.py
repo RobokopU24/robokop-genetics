@@ -122,19 +122,24 @@ class ClinGenService(object):
                                                                       error_type=query_response.error_type,
                                                                       error_message=query_response.error_message))
         else:
-            for response_item in query_response.response_json:
-                synonymization_results.append(self.parse_result(response_item))
-            if allele_preference:
-                filtered_syn_results = []
-                for syn_result in synonymization_results:
-                    if syn_result.success:
-                        robo_ids = Text.get_curies_by_prefix('ROBO_VARIANT', syn_result.synonyms)
-                        if robo_ids:
-                            actual_allele = robo_ids.pop().split('|')[-1]
-                            if actual_allele == allele_preference:
-                                filtered_syn_results.append(syn_result)
-                if filtered_syn_results:
-                    return filtered_syn_results
+            if not query_response.response_json:
+                synonymization_results.append(ClinGenSynonymizationResult(success=False,
+                                                                          error_type='NotFound',
+                                                                          error_message='Clingen returned a 200 status but no results.'))
+            else:
+                for response_item in query_response.response_json:
+                    synonymization_results.append(self.parse_result(response_item))
+                if allele_preference:
+                    filtered_syn_results = []
+                    for syn_result in synonymization_results:
+                        if syn_result.success:
+                            robo_ids = Text.get_curies_by_prefix('ROBO_VARIANT', syn_result.synonyms)
+                            if robo_ids:
+                                actual_allele = robo_ids.pop().split('|')[-1]
+                                if actual_allele == allele_preference:
+                                    filtered_syn_results.append(syn_result)
+                    if filtered_syn_results:
+                        return filtered_syn_results
         return synonymization_results
 
     def parse_result(self, allele_json: dict):

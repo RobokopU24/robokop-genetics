@@ -153,7 +153,8 @@ def test_mixed_normalization(genetics_normalizer):
                    'CLINVARVARIANT:18390',
                    'DBSNP:rs10791957',
                    'BOGUS:rs999999999999',
-                   'DBSNP:rs199745043-AG']
+                   'DBSNP:rs199745043-AG',
+                   'DBSNP:rs3180018']
 
     normalization_map = genetics_normalizer.normalize_variants(variant_ids)
 
@@ -191,3 +192,5 @@ def test_mixed_normalization(genetics_normalizer):
 
     assert normalization_map['BOGUS:rs999999999999'][0]["error_type"] == 'UnsupportedPrefix'
     assert 'BOGUS' in normalization_map['BOGUS:rs999999999999'][0]["error_message"]
+
+    assert normalization_map['DBSNP:rs3180018'][0]["error_type"] == 'NotFound'
