@@ -38,7 +38,7 @@ def test_one_at_a_time_normalization(genetics_normalizer):
     normalization_result = genetics_normalizer.get_sequence_variant_normalization(node_id).pop()
     assert normalization_result['error_type'] == 'InefficientUsage'
     node_id = "HGVS:NC_000023.11:g.32389644G>A"
-    normalization_results = genetics_normalizer.get_sequence_variant_normalization(node_id).pop()
+    normalization_result = genetics_normalizer.get_sequence_variant_normalization(node_id).pop()
     assert normalization_result['error_type'] == 'InefficientUsage'
 
     node_id = "CLINVARVARIANT:18390"
