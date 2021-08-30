@@ -1,8 +1,10 @@
-import robokop_genetics.node_types as node_types
-from robokop_genetics.simple_graph_components import SimpleNode
+# import robokop_genetics.node_types as node_types
+# from robokop_genetics.simple_graph_components import SimpleNode
 from robokop_genetics.util import Text, LoggingUtil
 from math import ceil
 from dataclasses import dataclass
+from json.decoder import JSONDecodeError
+
 import logging
 import requests
 
@@ -231,20 +233,26 @@ class ClinGenService(object):
             else:
                 query_response = requests.get(query_url)
             response_status_code = query_response.status_code
-            if response_status_code == 200:
-                return ClinGenQueryResponse(success=True,
-                                            response_json=query_response.json())
-            else:
-                error_json = query_response.json()
-                cg_error_type = error_json["errorType"]
-                cg_error_description = error_json["description"]
-                cg_error_description += error_json["message"] if "message" in error_json else ""
-                # error_message = f'ClinGen returned a non-200 response calling ({query_url}):'
-                # error_message += f'{cg_error_type} - {cg_error_description} - {cg_error_message}'
-                # self.logger.error(error_message)
+            try:
+                if response_status_code == 200:
+                        response_json = query_response.json()
+                        return ClinGenQueryResponse(success=True,
+                                                    response_json=response_json)
+                else:
+                    error_json = query_response.json()
+                    cg_error_type = error_json["errorType"]
+                    cg_error_description = error_json["description"]
+                    cg_error_description += error_json["message"] if "message" in error_json else ""
+                    # error_message = f'ClinGen returned a non-200 response calling ({query_url}):'
+                    # error_message += f'{cg_error_type} - {cg_error_description} - {cg_error_message}'
+                    # self.logger.error(error_message)
+                    return ClinGenQueryResponse(success=False,
+                                                error_type=cg_error_type,
+                                                error_message=cg_error_description)
+            except JSONDecodeError:
                 return ClinGenQueryResponse(success=False,
-                                            error_type=cg_error_type,
-                                            error_message=cg_error_description)
+                                            error_type='JSONDecodeError',
+                                            error_message=f'Non-JSON result returned by Clingen. {query_response.text[:100]}')
 
         except requests.exceptions.RequestException as re:
             self.logger.error(f'Clingen service caught a request exception ({re}) on attempt number {retries}..')
