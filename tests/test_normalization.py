@@ -5,7 +5,6 @@ from robokop_genetics.genetics_normalization import GeneticsNormalizer
 from robokop_genetics.services.clingen import ClinGenService, ClinGenSynonymizationResult, ClinGenQueryResponse
 import robokop_genetics.node_types as node_types
 
-import requests
 
 """Check variant synonymization through the ClinGen Allele Registry (CAID)
 """

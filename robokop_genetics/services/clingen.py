@@ -146,23 +146,26 @@ class ClinGenService(object):
 
     def parse_result(self, allele_json: dict):
         synonyms = set()
+        if "errorType" in allele_json:
+            cg_error_type = allele_json["errorType"]
+            cg_error_description = allele_json["description"]
+            cg_error_description += allele_json["message"] if "message" in allele_json else ""
+            # error_message = f'ClinGen returned an error: '
+            # error_message += f'{cg_error_type} - {cg_error_description} - {cg_error_message}'
+            # self.logger.error(error_message)
+            return ClinGenSynonymizationResult(success=False,
+                                               error_type=cg_error_type,
+                                               error_message=cg_error_description)
         try:
             variant_caid = allele_json['@id'].rsplit('/', 1)[1]
         except KeyError:
-            if "errorType" in allele_json:
-                cg_error_type = allele_json["errorType"]
-                cg_error_description = allele_json["description"]
-                cg_error_description += allele_json["message"] if "message" in allele_json else ""
-                # error_message = f'ClinGen returned an error: '
-                # error_message += f'{cg_error_type} - {cg_error_description} - {cg_error_message}'
-                # self.logger.error(error_message)
-                return ClinGenSynonymizationResult(success=False,
-                                                   error_type=cg_error_type,
-                                                   error_message=cg_error_description)
-            else:
-                return ClinGenSynonymizationResult(success=False,
-                                                   error_type='UnspecifiedError',
-                                                   error_message=str(allele_json))
+            return ClinGenSynonymizationResult(success=False,
+                                               error_type='MissingIdentifier',
+                                               error_message=f'@id field missing from: {str(allele_json)}')
+        except IndexError:
+            return ClinGenSynonymizationResult(success=False,
+                                               error_type='BadIdentifier',
+                                               error_message=f'Could not parse: {str(allele_json["@id"])}')
 
         synonyms.add(f'CAID:{variant_caid}')
 
