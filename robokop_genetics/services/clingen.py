@@ -19,6 +19,8 @@ curie_to_post_param_lookup = {
     "MYVARIANT_HG38": "MyVariantInfo_hg38.id"
 }
 
+CLINGEN_BATCH_SIZE = 500_000
+
 
 @dataclass
 class ClinGenQueryResponse:
@@ -72,9 +74,9 @@ class ClinGenService(object):
 
         separator = '\n'
         normalization_results = []
-        num_batches = ceil(len(variant_id_list) / 2000)
+        num_batches = ceil(len(variant_id_list) / CLINGEN_BATCH_SIZE)
         for i in range(num_batches):
-            variant_subset = variant_id_list[i * 2000:i * 2000 + 2000]
+            variant_subset = variant_id_list[i * CLINGEN_BATCH_SIZE:i * CLINGEN_BATCH_SIZE + CLINGEN_BATCH_SIZE]
             variant_pseudo_file = separator.join(variant_subset)
             query_url = f'{self.url}alleles?file={variant_format_param}&{self.synon_fields_param}'
             query_response: ClinGenQueryResponse = self.query_service(query_url, data=variant_pseudo_file)
