@@ -53,7 +53,7 @@ class GeneticsNormalizer(object):
         if self.cache:
             all_normalization_results = self.cache.get_batch_normalization(variant_ids)
             variants_that_need_normalizing = [variant_id for variant_id in variant_ids if variant_id not in all_normalization_results]
-            self.logger.info(f'Batch normalizing found {len(normalization_results)}/{len(variant_ids)} results in the cache.')
+            self.logger.info(f'Batch normalizing found {len(all_normalization_results)}/{len(variant_ids)} results in the cache.')
         else:
             all_normalization_results = {}
             variants_that_need_normalizing = variant_ids
