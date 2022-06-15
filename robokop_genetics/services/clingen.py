@@ -1,5 +1,3 @@
-# import robokop_genetics.node_types as node_types
-# from robokop_genetics.simple_graph_components import SimpleNode
 from robokop_genetics.util import Text, LoggingUtil
 from math import ceil
 from dataclasses import dataclass
@@ -10,13 +8,11 @@ import requests
 
 # other classes should check this list before calling get_batch_of_synonyms
 batchable_variant_curie_prefixes = ["CAID",
-                                    "HGVS",
-                                    "MYVARIANT_HG38"]
+                                    "HGVS"]
 # other options include ExAC.id or gnomAD.id, but we're not using those yet
 curie_to_post_param_lookup = {
     "CAID": "id",
-    "HGVS": "hgvs",
-    "MYVARIANT_HG38": "MyVariantInfo_hg38.id"
+    "HGVS": "hgvs"
 }
 
 CLINGEN_BATCH_SIZE = 500_000
@@ -46,7 +42,10 @@ class ClinGenService(object):
 
     def __init__(self):
         self.url = 'https://reg.genome.network/'
-        self.synon_fields_param = 'fields=none+@id+externalRecords.dbSNP+externalRecords.ClinVarVariations+externalRecords.MyVariantInfo_hg38+genomicAlleles-genomicAlleles.referenceSequence'
+        self.synon_fields_param = 'fields=none+@id+' \
+                                  'externalRecords.dbSNP.rs+' \
+                                  'externalRecords.ClinVarVariations.variationId+' \
+                                  'genomicAlleles-genomicAlleles.referenceSequence'
 
     #
     # Important note: Provide a list of variant curies with the same prefix (ie. all HGVS or all CAID but not mixed)
@@ -265,4 +264,3 @@ class ClinGenService(object):
                 return ClinGenQueryResponse(success=False, error_type='RequestException', error_message=str(re))
             else:
                 return self.query_service(query_url, data, retries + 1)
-
