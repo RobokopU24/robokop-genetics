@@ -42,7 +42,7 @@ class GeneticsNormalizer(object):
                     f'Failed bl-lookup for {node_types.SEQUENCE_VARIANT} ancestor types: (response code: {response.status_code})')
         return sequence_variant_node_types
 
-    def normalize_variants(self, variant_ids: list):
+    def normalize_variants(self, variant_ids):
         """
         Normalize a list of variants in the most efficient way ie. check the cache, then process in batches if possible.
         :param variant_ids: a list of variant curie identifiers
