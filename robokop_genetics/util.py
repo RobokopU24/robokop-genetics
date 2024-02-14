@@ -12,6 +12,8 @@ class LoggingUtil(object):
             return f'{os.environ["ROBO_GENETICS_LOGS"]}/'
         elif 'DATA_SERVICES_LOGS' in os.environ:
             return f'{os.environ["DATA_SERVICES_LOGS"]}/'
+        elif 'ORION_LOGS' in os.environ:
+            return f'{os.environ["ORION_LOGS"]}/'
         elif 'RAGS_HOME' in os.environ:
             return f'{os.environ["RAGS_HOME"]}/logs/'
         elif 'ROBOKOP_HOME' in os.environ:
