@@ -180,13 +180,14 @@ def test_mixed_normalization(genetics_normalizer):
     assert 'HGVS:NC_000011.10:g.68032291C>G' in normalized_synonyms
     assert 'ROBO_VARIANT:HG38|11|68032290|68032291|C|G' in normalized_synonyms
 
-    assert normalization_map['DBSNP:rs10791957'][0]["id"] == 'CAID:CA15722020'
+    assert normalization_map['DBSNP:rs10791957'][0]["id"] == 'CAID:CA1980501278'
     normalized_node_types = normalization_map['DBSNP:rs10791957'][0]["type"]
     assert node_types.SEQUENCE_VARIANT in normalized_node_types
     assert node_types.NAMED_THING in normalized_node_types
     assert node_types.BIOLOGICAL_ENTITY in normalized_node_types
+    assert normalization_map['DBSNP:rs10791957'][1]["id"] == 'CAID:CA15722020'
 
-    assert normalization_map['DBSNP:rs199745043-AG'][0]["id"] == 'CAID:CA101278073'
+    assert normalization_map['DBSNP:rs199745043-AG'][0]["id"] == 'CAID:CA101278074'
     assert len(normalization_map['DBSNP:rs199745043-AG']) == 1
 
     assert normalization_map['BOGUS:rs999999999999'][0]["error_type"] == 'UnsupportedPrefix'
