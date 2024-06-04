@@ -41,10 +41,15 @@ def test_one_at_a_time_normalization(genetics_normalizer):
     assert normalization_result['error_type'] == 'InefficientUsage'
 
     node_id = "CLINVARVARIANT:18390"
-    normalization_info = genetics_normalizer.get_sequence_variant_normalization(node_id).pop()
-    assert normalization_info["id"] == 'CAID:CA128085'
-    assert normalization_info["name"] == 'rs671'
-    assert 'DBSNP:rs671' in normalization_info["equivalent_identifiers"]
+    synonymization_results = genetics_normalizer.get_sequence_variant_normalization(node_id)
+    found_result = False
+    for normalization_info in synonymization_results:
+        if 'id' in normalization_info:
+            assert normalization_info["id"] == 'CAID:CA128085'
+            assert normalization_info["name"] == 'rs671'
+            assert 'DBSNP:rs671' in normalization_info["equivalent_identifiers"]
+            found_result = True
+    assert found_result
 
     # rs369602258 is tri-allelic - the following tests show how a specific allele can be normalized from a DBSNP
     # if no allele specified return all CAID and their synonym sets

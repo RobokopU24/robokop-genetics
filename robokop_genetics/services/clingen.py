@@ -81,7 +81,9 @@ class ClinGenService(object):
             query_response: ClinGenQueryResponse = self.query_service(query_url, data=variant_pseudo_file)
             if query_response.success:
                 for allele_json in query_response.response_json:
-                    normalization_results.append(self.parse_result(allele_json))
+                    parsed_result = self.parse_result(allele_json)
+                    if parsed_result is not None:
+                        normalization_results.append(parsed_result)
             else:
                 for j in range(len(variant_subset)):
                     normalization_results.append(ClinGenSynonymizationResult(success=False,
@@ -131,7 +133,9 @@ class ClinGenService(object):
                                                                           error_message='Clingen returned a 200 status but no results.'))
             else:
                 for response_item in query_response.response_json:
-                    synonymization_results.append(self.parse_result(response_item))
+                    parsed_result = self.parse_result(response_item)
+                    if parsed_result is not None:
+                        synonymization_results.append(parsed_result)
                 if allele_preference:
                     filtered_syn_results = []
                     for syn_result in synonymization_results:
@@ -159,6 +163,13 @@ class ClinGenService(object):
                                                error_message=cg_error_description)
         try:
             variant_caid = allele_json['@id'].rsplit('/', 1)[1]
+            # clingen added Protein Allele IDs but we don't want them (for now)
+            if variant_caid.startswith('PA'):
+                return None
+                # we could do something like the following, but it's not really an error, let's just ignore them
+                # return ClinGenSynonymizationResult(success=False,
+                #                                    error_type='UnsupportedIdentifier',
+                #                                    error_message=f'Protein Allele IDs not supported {variant_caid}')
         except KeyError:
             return ClinGenSynonymizationResult(success=False,
                                                error_type='MissingIdentifier',
