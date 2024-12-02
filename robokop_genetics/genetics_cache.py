@@ -87,7 +87,7 @@ class GeneticsCache:
     def __encode_service_results(self, service_results: list):
         encoded_results = []
         for (edge, node) in service_results:
-            json_node = {"id": node.id, "type": node.type, "name": node.name}
+            json_node = {"id": node.id, "category": node.type, "name": node.name}
             json_edge = {"source_id": edge.source_id,
                          "target_id": edge.target_id,
                          "provided_by": edge.provided_by,
@@ -126,7 +126,7 @@ class GeneticsCache:
             # properties aren't used yet, synonyms will come from normalization after the fact
             node_json = result["node"]
             node_object = SimpleNode(id=node_json["id"],
-                                     type=node_json["type"],
+                                     type=node_json["category"],
                                      name=node_json["name"])
             decoded_results.append((edge_object,
                                    node_object))

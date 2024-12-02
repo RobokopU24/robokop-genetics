@@ -99,12 +99,13 @@ class GeneticsNormalizer(object):
         synonymization_results = self.clingen.get_synonyms_by_other_id(variant_curie)
         for synonymization_result in synonymization_results:
             if synonymization_result.success:
-                normalized_id, normalized_name = self.get_id_and_name_from_synonyms(synonymization_result.synonyms)
                 normalization_dict = {
-                    "id": normalized_id,
-                    "name": normalized_name,
-                    "equivalent_identifiers": list(synonymization_result.synonyms),
-                    "type": self.sequence_variant_node_types
+                    "id": synonymization_result.id,
+                    "name": synonymization_result.name,
+                    "hgvs": synonymization_result.hgvs,
+                    "equivalent_identifiers": synonymization_result.equivalent_identifiers,
+                    "robokop_variant_id": synonymization_result.robokop_variant_id,
+                    "category": self.sequence_variant_node_types
                 }
             else:
                 normalization_dict = {
@@ -121,15 +122,15 @@ class GeneticsNormalizer(object):
         # as opposed to potentially returning multiple sets such as when calling get_synonyms_by_other_id.
         # Here we always only create one normalized node per provided ID.
         synonymization_results = self.clingen.get_batch_of_synonyms(curies)
-        sequence_variant_node_types = self.sequence_variant_node_types
         for i, synonymization_result in enumerate(synonymization_results):
             if synonymization_result.success:
-                normalized_id, normalized_name = self.get_id_and_name_from_synonyms(synonymization_result.synonyms)
                 normalization_dict = {
-                    "id": normalized_id,
-                    "name": normalized_name,
-                    "equivalent_identifiers": list(synonymization_result.synonyms),
-                    "type": sequence_variant_node_types
+                    "id": synonymization_result.id,
+                    "name": synonymization_result.name,
+                    "hgvs": synonymization_result.hgvs,
+                    "equivalent_identifiers": synonymization_result.equivalent_identifiers,
+                    "robokop_variant_id": synonymization_result.robokop_variant_id,
+                    "category": self.sequence_variant_node_types
                 }
             else:
                 normalization_dict = {
@@ -138,26 +139,3 @@ class GeneticsNormalizer(object):
                 }
             normalization_map[curies[i]] = [normalization_dict]
         return normalization_map
-
-    # extract the preferred curie and name from the synonym set
-    def get_id_and_name_from_synonyms(self, synonyms: set):
-
-        # find the best ID available - prefer CAID over HGVS over anything else
-        caid_curies = Text.get_curies_by_prefix('CAID', synonyms)
-        if caid_curies:
-            normalized_id = caid_curies.pop()
-        else:
-            hgvs_curies = Text.get_curies_by_prefix('HGVS', synonyms)
-            if hgvs_curies:
-                normalized_id = hgvs_curies.pop()
-            else:
-                # we didn't find a CAID or HGVS, just take the first one as an arbitrary id
-                normalized_id = next(iter(synonyms))
-
-        rsid_curies = Text.get_curies_by_prefix('DBSNP', synonyms)
-        if rsid_curies:
-            normalized_name = Text.un_curie(rsid_curies.pop())
-        else:
-            normalized_name = Text.un_curie(normalized_id)
-
-        return normalized_id, normalized_name

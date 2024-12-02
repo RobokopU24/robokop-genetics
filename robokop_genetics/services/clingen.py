@@ -29,7 +29,11 @@ class ClinGenQueryResponse:
 @dataclass
 class ClinGenSynonymizationResult:
     success: bool
-    synonyms: list = None
+    id: str = None
+    name: str = None
+    robokop_variant_id: str = None
+    hgvs: list = None
+    equivalent_identifiers: list = None
     error_type: str = None
     error_message: str = None
 
@@ -136,13 +140,16 @@ class ClinGenService(object):
                     parsed_result = self.parse_result(response_item)
                     if parsed_result is not None:
                         synonymization_results.append(parsed_result)
+                # If there is an allele preference, use the generated robokop_variant_id to determine if clingen
+                # results match that specific allele. Filter the results and return only the matching ones, if they
+                # exist, otherwise return all results even if they don't match.
                 if allele_preference:
                     filtered_syn_results = []
                     for syn_result in synonymization_results:
                         if syn_result.success:
-                            robo_ids = Text.get_curies_by_prefix('ROBO_VARIANT', syn_result.synonyms)
-                            if robo_ids:
-                                actual_allele = robo_ids.pop().split('|')[-1]
+                            robokop_variant_id = syn_result.robokop_variant_id
+                            if robokop_variant_id:
+                                actual_allele = robokop_variant_id.split('|')[-1]
                                 if actual_allele == allele_preference:
                                     filtered_syn_results.append(syn_result)
                     if filtered_syn_results:
@@ -150,7 +157,9 @@ class ClinGenService(object):
         return synonymization_results
 
     def parse_result(self, allele_json: dict):
-        synonyms = set()
+        robokop_variant_id = None
+        equivalent_identifiers = set()
+        hgvs = set()
         if "errorType" in allele_json:
             cg_error_type = allele_json["errorType"]
             cg_error_description = allele_json["description"]
@@ -163,7 +172,9 @@ class ClinGenService(object):
                                                error_message=cg_error_description)
         try:
             variant_caid = allele_json['@id'].rsplit('/', 1)[1]
-            # clingen added Protein Allele IDs but we don't want them (for now)
+            variant_id = f'CAID:{variant_caid}'
+            variant_name = variant_caid
+            # clingen added Protein Allele IDs, but we don't want them (for now)
             if variant_caid.startswith('PA'):
                 return None
                 # we could do something like the following, but it's not really an error, let's just ignore them
@@ -179,13 +190,11 @@ class ClinGenService(object):
                                                error_type='BadIdentifier',
                                                error_message=f'Could not parse: {str(allele_json["@id"])}')
 
-        synonyms.add(f'CAID:{variant_caid}')
-
         if 'genomicAlleles' in allele_json:
             try:
                 for genomic_allele in allele_json['genomicAlleles']:
                     for hgvs_id in genomic_allele['hgvs']:
-                        synonyms.add(f'HGVS:{hgvs_id}')
+                        hgvs.add(f'HGVS:{hgvs_id}')
                     if 'referenceGenome' in genomic_allele and genomic_allele['referenceGenome'] == 'GRCh38':
                         if 'chromosome' in genomic_allele:
                             sequence = genomic_allele['coordinates'][0]['allele']
@@ -193,8 +202,8 @@ class ClinGenService(object):
                             chromosome = genomic_allele['chromosome']
                             start_position = genomic_allele['coordinates'][0]['start']
                             end_position = genomic_allele['coordinates'][0]['end']
-                            robokop_variant_id = f'HG38|{chromosome}|{start_position}|{end_position}|{reference}|{sequence}'
-                            synonyms.add(f'ROBO_VARIANT:{robokop_variant_id}')
+                            robokop_variant = f'HG38|{chromosome}|{start_position}|{end_position}|{reference}|{sequence}'
+                            robokop_variant_id = f'ROBO_VARIANT:{robokop_variant}'
 
             except KeyError as e:
                 error_message = f'parsing sequence variant synonym - genomicAlleles KeyError for {variant_caid}: {e}'
@@ -204,14 +213,22 @@ class ClinGenService(object):
             if 'dbSNP' in allele_json['externalRecords']:
                 for dbsnp_json in allele_json['externalRecords']['dbSNP']:
                     variant_rsid = dbsnp_json['rs']
-                    synonyms.add(f'DBSNP:rs{variant_rsid}')
+                    equivalent_identifiers.add(f'DBSNP:rs{variant_rsid}')
+                    # default to using clingen id as the name, but most researchers are more familiar with DBSNP,
+                    # so use a DBSNP (rs) id as the name if one exists
+                    variant_name = f'rs{variant_rsid}'
 
             if 'ClinVarVariations' in allele_json['externalRecords']:
                 for clinvar_json in allele_json['externalRecords']['ClinVarVariations']:
                     clinvar_id = clinvar_json['variationId']
-                    synonyms.add(f'CLINVARVARIANT:{clinvar_id}')
+                    equivalent_identifiers.add(f'CLINVARVARIANT:{clinvar_id}')
 
-        synonymization_result = ClinGenSynonymizationResult(success=True, synonyms=synonyms)
+        synonymization_result = ClinGenSynonymizationResult(success=True,
+                                                            id=variant_id,
+                                                            name=variant_name,
+                                                            robokop_variant_id=robokop_variant_id,
+                                                            hgvs=list(hgvs),
+                                                            equivalent_identifiers=list(equivalent_identifiers))
         return synonymization_result
 
     """
@@ -250,9 +267,9 @@ class ClinGenService(object):
             response_status_code = query_response.status_code
             try:
                 if response_status_code == 200:
-                        response_json = query_response.json()
-                        return ClinGenQueryResponse(success=True,
-                                                    response_json=response_json)
+                    response_json = query_response.json()
+                    return ClinGenQueryResponse(success=True,
+                                                response_json=response_json)
                 else:
                     error_json = query_response.json()
                     cg_error_type = error_json["errorType"]
