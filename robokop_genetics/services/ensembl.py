@@ -3,10 +3,14 @@ from robokop_genetics.simple_graph_components import SimpleNode, SimpleEdge
 from robokop_genetics.util import Text, LoggingUtil
 from collections import namedtuple
 import logging
-import time
 import sqlite3
 import os
 import requests
+
+###
+# !!!! README - this uses ensembl gene information to annotate variants with nearby genes,
+# but it hasn't been used in a long time. It's been replaced by running SNPEFF in ORION.
+###
 
 EnsemblGene = namedtuple('EnsemblGene', ['ensembl_id', 'ensembl_name', 'chromosome', 'start_position', 'end_position', 'gene_biotype', 'description'])
 

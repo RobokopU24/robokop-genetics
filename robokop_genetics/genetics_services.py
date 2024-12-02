@@ -1,4 +1,3 @@
-from robokop_genetics.services.myvariant import MyVariantService
 from robokop_genetics.services.ensembl import EnsemblService
 from robokop_genetics.services.hgnc import HGNCService
 from robokop_genetics.util import LoggingUtil
@@ -6,11 +5,8 @@ from robokop_genetics.genetics_cache import GeneticsCache
 from collections import defaultdict
 import logging
 
-MYVARIANT = "MyVariant"
-ENSEMBL = "Ensembl"
 
-ALL_VARIANT_TO_GENE_SERVICES = [MYVARIANT, ENSEMBL]
-BATCHABLE_VARIANT_TO_GENE_SERVES = [MYVARIANT]
+ENSEMBL = "Ensembl"
 
 
 class GeneticsServices(object):
@@ -19,7 +15,7 @@ class GeneticsServices(object):
                                       logging.INFO,
                                       log_file_path=LoggingUtil.get_logging_path())
 
-    def __init__(self, use_cache: bool=True):
+    def __init__(self, use_cache: bool = True):
 
         if use_cache:
             self.cache = GeneticsCache()
@@ -29,7 +25,6 @@ class GeneticsServices(object):
             self.logger.info('Robokop Genetics Services initialized with no cache activated.')
 
         self.hgnc = HGNCService()
-        self.myvariant = MyVariantService(hgnc_service=self.hgnc)
         self.ensembl = EnsemblService(temp_dir=LoggingUtil.get_logging_path())
 
     def get_variant_to_gene(self, services: list, variant_nodes: list):
@@ -51,32 +46,7 @@ class GeneticsServices(object):
             else:
                 nodes_that_need_results = variant_nodes
 
-            if service == MYVARIANT:
-                # send batches to myvariant
-                counter = 0
-                myvariant_syn_dict = {}
-                for node in nodes_that_need_results:
-                    myvariant_syn_dict[node.id] = node.synonyms
-                    counter += 1
-                    # this batch size is pretty arbitrary
-                    # myvariant really sends batches of 1000
-                    # but we can probably cache more at a time
-                    if counter == 10000:
-                        new_myvariant_results = self.batch_query_variant_to_gene(MYVARIANT, myvariant_syn_dict)
-                        for node_id, results in new_myvariant_results.items():
-                            all_results[node_id].extend(results)
-                        if self.cache:
-                            self.cache.set_service_results(cache_key, new_myvariant_results)
-                        counter = 0
-                        myvariant_syn_dict = {}
-                if counter > 0:
-                    new_myvariant_results = self.batch_query_variant_to_gene(MYVARIANT, myvariant_syn_dict)
-                    for node_id, results in new_myvariant_results.items():
-                        all_results[node_id].extend(results)
-                    if self.cache:
-                        self.cache.set_service_results(cache_key, new_myvariant_results)
-
-            elif service == ENSEMBL:
+            if service == ENSEMBL:
                 new_ensembl_results = {}
                 counter = 0
                 for node in nodes_that_need_results:
@@ -103,21 +73,10 @@ class GeneticsServices(object):
     # results will be in a list of tuples
     # (edge: SimpleEdge, gene_node: SimpleNode)
     def query_variant_to_gene(self, service: str, variant_id: str, variant_synonyms: set):
-        if service == MYVARIANT:
-            return self.myvariant.sequence_variant_to_gene(variant_id, variant_synonyms)
-        elif service == ENSEMBL:
+        if service == ENSEMBL:
             return self.ensembl.sequence_variant_to_gene(variant_id, variant_synonyms)
         else:
             self.logger.warning(f'Service ({service}) not found! Variant to gene failed.')
-
-    # variant_dict: a dictionary of variant_id (curie) to variant_synonyms (set of curies)
-    # these are the same parameters for get_variant_to_gene
-    # returns a dictionary with the variant id curie as keys and the results from get_variant_to_gene as values
-    def batch_query_variant_to_gene(self, service: str, variant_dict: dict):
-        if service == MYVARIANT:
-            return self.myvariant.batch_sequence_variant_to_gene(variant_dict)
-        else:
-            self.logger.warning(f'Service ({service}) not batch-able! Variant to gene failed.')
 
     # given a plain string gene_symbol return a valid curie gene ID
     # eg. BRCA1 -> HGNC:1100
