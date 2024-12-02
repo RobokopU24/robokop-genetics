@@ -1,20 +1,8 @@
-from ftplib import FTP, error_proto, all_errors as all_ftp_errors
-from io import BytesIO
-from json import loads
+import json
 import logging
 import time
+import requests
 from robokop_genetics.util import LoggingUtil
-
-
-def pull_via_ftp(ftpsite, ftpdir, ftpfile):
-    ftp = FTP(ftpsite)
-    ftp.login()
-    ftp.cwd(ftpdir)
-    with BytesIO() as data:
-        ftp.retrbinary(f'RETR {ftpfile}', data.write)
-        binary = data.getvalue()
-    ftp.quit()
-    return binary
 
 
 class HGNCService(object):
@@ -36,27 +24,29 @@ class HGNCService(object):
             return None
 
     def init_symbol_lookup(self):
-        self.logger.info(f'Preparing HGNC Symbol look up.')
+        self.logger.debug(f'Preparing HGNC Symbol look up.')
         self.hgnc_symbol_to_curie = {}
 
-        data = None
+        hgnc_json = None
         num_tries = 0
-        while num_tries < 5 and data is None:
+        while num_tries < 5 and hgnc_json is None:
             try:
-                self.logger.info(f'Pulling HGNC set by ftp.')
-                data = pull_via_ftp('ftp.ebi.ac.uk', '/pub/databases/genenames/new/json', 'hgnc_complete_set.json')
-            except all_ftp_errors:
+                self.logger.debug(f'Pulling HGNC data.')
+                hgnc_response = requests.get("https://storage.googleapis.com/public-download-files/hgnc/json/json/hgnc_complete_set.json")
+                try:
+                    hgnc_json = hgnc_response.json()
+                except json.JSONDecodeError:
+                    self.logger.error(f'HGNC download json parsing error.')
+            except requests.exceptions.RequestException:
                 num_tries += 1
                 time.sleep(2)
-                self.logger.info(f'FTP attempt failed. Trying again ({num_tries} times).')
-        if data is None:
-            self.logger.info(f'HGNC Symbol look up failed.!')
+                self.logger.warning(f'HGNC download attempt failed. Trying again ({num_tries} times).')
+        if hgnc_json is None:
+            self.logger.error(f'HGNC Symbol look up failed.!')
             return
 
-        hgnc_json = loads(data.decode())
         for hgnc_item in hgnc_json['response']['docs']:
             hgnc_symbol = hgnc_item['symbol']
             if hgnc_symbol not in self.hgnc_symbol_to_curie:
                 self.hgnc_symbol_to_curie[hgnc_symbol] = hgnc_item['hgnc_id']
-
-        self.logger.info(f'HGNC Symbol look up ready.!')
+        self.logger.debug(f'HGNC Symbol look up ready.!')
