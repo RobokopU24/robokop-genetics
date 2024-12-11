@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="robokop-genetics",
-    version="0.6.1",
+    version="0.6.2",
     author="Evan Morris",
     author_email="evandietzmorris@gmail.com",
     maintainer="Evan Morris",
