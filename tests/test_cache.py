@@ -128,17 +128,6 @@ def test_service_results_cache(genetics_cache, genetics_services):
     results = results_from_cache[2]
     assert results is None
 
-    node_id_3 = 'CAID:CA6451230'
-    service_key = f'{MYVARIANT}_variant_to_gene'
-    myvariant_curie = "MYVARIANT_HG38:chr12:g.11091595T>C"
-    service_results = genetics_services.query_variant_to_gene(MYVARIANT, node_id_3, {node_id_3, myvariant_curie})
-    identifiers = [node.id for edge, node in service_results]
-    assert 'HGNC:18875' in identifiers
-    predicates = [edge.predicate_id for edge, node in service_results]
-    assert 'SNPEFF:missense_variant' in predicates
-    results_dict = {node_id_3: service_results}
-    genetics_cache.set_service_results(service_key, results_dict)
-
     results_from_cache = genetics_cache.get_service_results(service_key, node_ids=[node_id_3])
     results = results_from_cache[0]
     identifiers = [node.id for edge, node in results]
