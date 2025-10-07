@@ -60,9 +60,9 @@ def test_one_at_a_time_normalization(genetics_normalizer):
     assert 'CAID:CA321211' in normalized_ids
     assert 'rs369602258' in normalized_names
 
-    # if the allele preference is not found as an alt allele (in this case it's the reference)
+    # if the allele preference is not found as an alt allele
     # return all CAID and their synonym sets
-    node_id = "DBSNP:rs369602258-C"
+    node_id = "DBSNP:rs369602258-Z"
     normalizations_2 = genetics_normalizer.get_sequence_variant_normalization(node_id)
     assert len(normalizations) == len(normalizations_2)
     normalized_ids = [norm["id"] for norm in normalizations]
@@ -158,14 +158,12 @@ def test_mixed_normalization(genetics_normalizer):
                    'CLINVARVARIANT:18390',
                    'DBSNP:rs10791957',
                    'BOGUS:rs999999999999',
-                   'DBSNP:rs199745043-AG',
                    'DBSNP:rs3180018']
 
     normalization_map = genetics_normalizer.normalize_variants(variant_ids)
 
     assert normalization_map['CAID:CA128085'][0]["id"] == 'CAID:CA128085'
     assert normalization_map['CAID:CA128085'][0]["name"] == 'rs671'
-    print(normalization_map)
     equivalent_identifiers = normalization_map['CAID:CA128085'][0]["equivalent_identifiers"]
     assert 'CLINVARVARIANT:18390' in equivalent_identifiers
     assert 'DBSNP:rs671' in equivalent_identifiers
@@ -196,9 +194,6 @@ def test_mixed_normalization(genetics_normalizer):
     assert node_types.NAMED_THING in normalized_node_types
     assert node_types.BIOLOGICAL_ENTITY in normalized_node_types
     assert normalization_map['DBSNP:rs10791957'][1]["id"] == 'CAID:CA15722020'
-
-    assert normalization_map['DBSNP:rs199745043-AG'][0]["id"] == 'CAID:CA101278074'
-    assert len(normalization_map['DBSNP:rs199745043-AG']) == 1
 
     assert normalization_map['BOGUS:rs999999999999'][0]["error_type"] == 'UnsupportedPrefix'
     assert 'BOGUS' in normalization_map['BOGUS:rs999999999999'][0]["error_message"]

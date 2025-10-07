@@ -1,36 +1,30 @@
-from robokop_genetics.services.clingen import ClinGenService, ClinGenSynonymizationResult, batchable_variant_curie_prefixes
-from robokop_genetics.genetics_cache import GeneticsCache
-import robokop_genetics.node_types as node_types
-from robokop_genetics.util import LoggingUtil, Text
 import logging
-import requests
-import os
+
+from bmt import Toolkit as BiolinkModelToolkit
+
+import robokop_genetics.node_types as node_types
+from robokop_genetics.genetics_cache import GeneticsCache
+from robokop_genetics.services.clingen import ClinGenService, batchable_variant_curie_prefixes
+from robokop_genetics.util import LoggingUtil
 
 
-class GeneticsNormalizer(object):
-    DEFAULT_EDGE_NORM_ENDPOINT = f'https://biolink-lookup.transltr.io/'
+class GeneticsNormalizer:
 
     logger = LoggingUtil.init_logging(__name__,
                                       logging.INFO,
                                       log_file_path=LoggingUtil.get_logging_path())
 
-    def __init__(self, use_cache: bool = False, bl_version: str = "latest"):
+    def __init__(self, use_cache: bool = False, bl_version: str = None):
+
         if use_cache:
             self.cache = GeneticsCache()
-            self.logger.info('Robokop Genetics Normalizer initialized with cache activated.')
+            self.logger.info('Robokop Genetics Normalizer initialized with redis cache activated.')
         else:
             self.cache = None
-            self.logger.info('Robokop Genetics Normalizer initialized with no cache activated.')
 
-        if 'EDGE_NORMALIZATION_ENDPOINT' in os.environ:
-            self.edge_norm_endpoint = os.environ['EDGE_NORMALIZATION_ENDPOINT']
-            self.logger.info(f'Using EDGE_NORMALIZATION_ENDPOINT from env var: {self.edge_norm_endpoint}')
-        else:
-            self.edge_norm_endpoint = self.DEFAULT_EDGE_NORM_ENDPOINT
-            self.logger.info(f'Using default EDGE_NORMALIZATION_ENDPOINT: {self.edge_norm_endpoint}')
-
+        # lazily load a list of biolink categories ie "biolink:SequenceVariant", "biolink:NamedThing"
+        self.sequence_variant_node_types = None
         self.bl_version = bl_version
-        self.sequence_variant_node_types = self.fetch_sequence_variant_node_types()
         self.clingen = ClinGenService()
 
     def get_sequence_variant_node_types(self):
@@ -38,19 +32,27 @@ class GeneticsNormalizer(object):
         Returns a list of all normalized node types for sequence variant nodes
         :return:
         """
+        if self.sequence_variant_node_types is None:
+            self.sequence_variant_node_types = self.fetch_sequence_variant_node_types()
         return self.sequence_variant_node_types
 
     def fetch_sequence_variant_node_types(self):
-        bl_url = f"{self.edge_norm_endpoint}bl/{node_types.SEQUENCE_VARIANT}/ancestors?version={self.bl_version}"
-        with requests.session() as client:
-            response = client.get(bl_url)
-            if response.status_code == 200:
-                sequence_variant_node_types = list(set(response.json() + [node_types.SEQUENCE_VARIANT]))
+        try:
+            if self.bl_version:
+                versioned_biolink_url = (f"https://raw.githubusercontent.com/biolink/biolink-model/"
+                                         f"v{self.bl_version}/biolink-model.yaml")
+                bmt = BiolinkModelToolkit(schema=versioned_biolink_url)
             else:
-                sequence_variant_node_types = [node_types.NAMED_THING, node_types.SEQUENCE_VARIANT]
-                self.logger.error(
-                    f'Failed bl-lookup for {node_types.SEQUENCE_VARIANT} ancestor types: (response code: {response.status_code})')
-        return sequence_variant_node_types
+                bmt = BiolinkModelToolkit()
+            sequence_variant_node_types = bmt.get_ancestors(node_types.SEQUENCE_VARIANT,
+                                                            reflexive=True,
+                                                            formatted=True,
+                                                            mixin=True)
+            return sequence_variant_node_types
+        except Exception as e:
+            self.logger.error(f'Failed to determine sequence variant node types from the biolink model, '
+                              f'using defaults. ({e})')
+            return [node_types.NAMED_THING, node_types.SEQUENCE_VARIANT]
 
     def normalize_variants(self, variant_ids):
         """
@@ -105,7 +107,7 @@ class GeneticsNormalizer(object):
                     "hgvs": synonymization_result.hgvs,
                     "equivalent_identifiers": synonymization_result.equivalent_identifiers,
                     "robokop_variant_id": synonymization_result.robokop_variant_id,
-                    "category": self.sequence_variant_node_types
+                    "category": self.get_sequence_variant_node_types()
                 }
             else:
                 normalization_dict = {
@@ -130,7 +132,7 @@ class GeneticsNormalizer(object):
                     "hgvs": synonymization_result.hgvs,
                     "equivalent_identifiers": synonymization_result.equivalent_identifiers,
                     "robokop_variant_id": synonymization_result.robokop_variant_id,
-                    "category": self.sequence_variant_node_types
+                    "category": self.get_sequence_variant_node_types()
                 }
             else:
                 normalization_dict = {
