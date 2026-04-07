@@ -29,6 +29,8 @@ def get_logger(name):
     if logger.hasHandlers():
         return logger
 
+    logger.setLevel(logging.INFO)
+
     formatter = logging.Formatter('%(asctime)-15s - %(funcName)s(): %(message)s')
 
     logs_dir_path = get_logging_path()
