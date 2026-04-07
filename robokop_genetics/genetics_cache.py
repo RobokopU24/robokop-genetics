@@ -1,16 +1,12 @@
 import os
 import json
 import redis
-import logging
-from robokop_genetics.util import LoggingUtil
+from robokop_genetics.util import get_logger
 from robokop_genetics.simple_graph_components import SimpleEdge, SimpleNode
 
+logger = get_logger('genetics_cache')
 
 class GeneticsCache:
-
-    logger = LoggingUtil.init_logging(__name__,
-                                      logging.INFO,
-                                      log_file_path=LoggingUtil.get_logging_path())
 
     def __init__(self,
                  use_default_credentials: bool = True,
@@ -28,7 +24,7 @@ class GeneticsCache:
                 redis_db = os.environ['ROBO_GENETICS_CACHE_DB']
                 redis_password = os.environ['ROBO_GENETICS_CACHE_PASSWORD']
             except KeyError:
-                self.logger.warning('ROBO_GENETICS_CACHE environment variables not set. No cache activated.')
+                logger.warning('ROBO_GENETICS_CACHE environment variables not set. No cache activated.')
                 raise Exception("Cache requested but ROBO_GENETICS_CACHE environment variables not set!")
 
         try:
@@ -42,9 +38,9 @@ class GeneticsCache:
                                          port=int(redis_port),
                                          db=int(redis_db))
             self.redis.get('x')
-            self.logger.info(f"Genetics cache connected to redis at {redis_host}:{redis_port}/{redis_db}")
+            logger.info(f"Genetics cache connected to redis at {redis_host}:{redis_port}/{redis_db}")
         except Exception as e:
-            self.logger.error(f"Genetics cache failed to connect to redis at {redis_host}:{redis_port}/{redis_db}.")
+            logger.error(f"Genetics cache failed to connect to redis at {redis_host}:{redis_port}/{redis_db}.")
             raise e
 
     #def set_normalization(self, node_id: str, normalization: tuple):

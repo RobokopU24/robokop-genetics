@@ -1,10 +1,11 @@
-from robokop_genetics.util import Text, LoggingUtil
+from robokop_genetics.util import Text, get_logger
 from math import ceil
 from dataclasses import dataclass
 from json.decoder import JSONDecodeError
 
-import logging
 import requests
+
+logger = get_logger('clingen')
 
 # other classes should check this list before calling get_batch_of_synonyms
 batchable_variant_curie_prefixes = ["CAID",
@@ -39,10 +40,6 @@ class ClinGenSynonymizationResult:
 
 
 class ClinGenService(object):
-
-    logger = LoggingUtil.init_logging(__name__,
-                                      logging.INFO,
-                                      log_file_path=LoggingUtil.get_logging_path())
 
     def __init__(self):
         self.url = 'https://reg.genome.network/'
@@ -166,7 +163,7 @@ class ClinGenService(object):
             cg_error_description += allele_json["message"] if "message" in allele_json else ""
             # error_message = f'ClinGen returned an error: '
             # error_message += f'{cg_error_type} - {cg_error_description} - {cg_error_message}'
-            # self.logger.error(error_message)
+            # logger.error(error_message)
             return ClinGenSynonymizationResult(success=False,
                                                error_type=cg_error_type,
                                                error_message=cg_error_description)
@@ -207,7 +204,7 @@ class ClinGenService(object):
 
             except KeyError as e:
                 error_message = f'parsing sequence variant synonym - genomicAlleles KeyError for {variant_caid}: {e}'
-                self.logger.error(error_message)
+                logger.error(error_message)
 
         if 'externalRecords' in allele_json:
             if 'dbSNP' in allele_json['externalRecords']:
@@ -277,7 +274,7 @@ class ClinGenService(object):
                     cg_error_description += error_json["message"] if "message" in error_json else ""
                     # error_message = f'ClinGen returned a non-200 response calling ({query_url}):'
                     # error_message += f'{cg_error_type} - {cg_error_description} - {cg_error_message}'
-                    # self.logger.error(error_message)
+                    # logger.error(error_message)
                     return ClinGenQueryResponse(success=False,
                                                 error_type=cg_error_type,
                                                 error_message=cg_error_description)
@@ -287,7 +284,7 @@ class ClinGenService(object):
                                             error_message=f'Non-JSON result returned by Clingen. {query_response.text[:100]}')
 
         except requests.exceptions.RequestException as re:
-            self.logger.error(f'Clingen service caught a request exception ({re}) on attempt number {retries}..')
+            logger.error(f'Clingen service caught a request exception ({re}) on attempt number {retries}..')
             if retries == 3:
                 return ClinGenQueryResponse(success=False, error_type='RequestException', error_message=str(re))
             else:

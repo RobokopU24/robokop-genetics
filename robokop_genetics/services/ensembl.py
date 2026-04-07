@@ -1,11 +1,12 @@
 from robokop_genetics import node_types
 from robokop_genetics.simple_graph_components import SimpleNode, SimpleEdge
-from robokop_genetics.util import Text, LoggingUtil
+from robokop_genetics.util import Text, get_logger
 from collections import namedtuple
-import logging
 import sqlite3
 import os
 import requests
+
+logger = get_logger('ensembl')
 
 ###
 # !!!! README - this uses ensembl gene information to annotate variants with nearby genes,
@@ -17,10 +18,7 @@ EnsemblGene = namedtuple('EnsemblGene', ['ensembl_id', 'ensembl_name', 'chromoso
 
 class EnsemblService(object):
 
-    logger = LoggingUtil.init_logging(__name__,
-                                      logging.INFO,
-                                      log_file_path=LoggingUtil.get_logging_path())
-    
+
     def __init__(self, temp_dir: str=None):
 
         self.upstream_gene_predicate_id = 'SNPEFF:upstream_gene_variant'
@@ -55,7 +53,7 @@ class EnsemblService(object):
                                     </Query>"""
 
         self.check_if_already_done_sql = "SELECT name FROM sqlite_master WHERE type='table' AND name='genes';"
-        
+
         self.genes_table_sql = """CREATE TABLE IF NOT EXISTS genes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         ensembl_id text, 
@@ -72,7 +70,7 @@ class EnsemblService(object):
         self.gene_entry_sql = """INSERT INTO genes 
         (ensembl_id, gene_name, chromosome, start_pos, end_pos, gene_type, description) 
         VALUES (?,?,?,?,?,?,?);"""
-        
+
         self.gene_range_select_sql = """SELECT ensembl_id, gene_name, start_pos, end_pos
         FROM genes WHERE chromosome = ? AND ((? >= start_pos AND ? <= end_pos)
         OR (? >= start_pos AND ? <= end_pos) OR (? <= start_pos AND ? >= end_pos));"""
@@ -80,10 +78,10 @@ class EnsemblService(object):
         self.gene_ensembl_id_select_sql = "SELECT * FROM genes WHERE ensembl_id = ?"
 
     def create_or_connect_to_genes_db(self):
-        
+
         if not self.gene_db_successfully_created:
             self.create_genes_db()
-        
+
         if not self.persistent_conn:
             self.persistent_conn = sqlite3.connect(self.gene_db_path, detect_types=sqlite3.PARSE_DECLTYPES)
             self.persistent_conn.row_factory = sqlite3.Row
@@ -103,7 +101,7 @@ class EnsemblService(object):
 
             # ensembl_genes are of type EnsemblGene namedtuple - that has to match the SQL parameters in gene_entry_sql
             ensembl_genes = self.retrieve_all_genes()
-           
+
             with db_conn:
                 db_conn.execute(self.genes_table_sql)
                 db_conn.executemany(self.gene_entry_sql, ensembl_genes)
@@ -111,12 +109,12 @@ class EnsemblService(object):
                 db_conn.execute(self.genes_table_composite_index_sql)
 
             db_conn.close()
-            self.logger.info(f'Ensembl created a gene database with {len(ensembl_genes)} entries!')
+            logger.info(f'Ensembl created a gene database with {len(ensembl_genes)} entries!')
             self.gene_db_successfully_created = True
             return True
 
         except sqlite3.Error as e:
-            self.logger.error(f'Ensembl had a database error: {e}')
+            logger.error(f'Ensembl had a database error: {e}')
 
     def retrieve_all_genes(self):
         genes_response = requests.get(self.ensembl_genes_url)
@@ -125,16 +123,16 @@ class EnsemblService(object):
             if len(genes_data) > 1:
                 ensembl_genes = []
                 for gene_line in genes_data[1:]:
-                    # gene_info is a EnsemblGene 
+                    # gene_info is a EnsemblGene
                     gene_info = self.parse_biomart_gene_data(gene_line)
                     if gene_info:
                         ensembl_genes.append(gene_info)
                 return ensembl_genes
             else:
-                self.logger.error(f'Ensembl biomart genes call didnt find any matches! Thats not right!')
+                logger.error(f'Ensembl biomart genes call didnt find any matches! Thats not right!')
                 return False
         else:
-            self.logger.error(f'Ensembl non-200 response from biomart genes call: {genes_response.status_code})')
+            logger.error(f'Ensembl non-200 response from biomart genes call: {genes_response.status_code})')
             return None
 
     def parse_biomart_gene_data(self, gene_line):
@@ -151,19 +149,19 @@ class EnsemblService(object):
             return EnsemblGene(ensembl_id, ensembl_name, chromosome, start_position, end_position, gene_type, description)
 
         except (IndexError, ValueError) as e:
-            self.logger.error(f'Ensembl biomart genes call had an issue with one line: {e})')
+            logger.error(f'Ensembl biomart genes call had an issue with one line: {e})')
 
         return None
 
     def sequence_variant_to_gene(self, variant_id: str, variant_synonyms: set):
-        
+
         flanking_region_size = 500000
         results = []
 
         found_valid_robokop_key = False
         robokop_ids = Text.get_curies_by_prefix('ROBO_VARIANT', variant_synonyms)
         if not robokop_ids:
-            self.logger.debug(f'ensembl: robokop variant key not found for variant: {variant_id}')
+            logger.debug(f'ensembl: robokop variant key not found for variant: {variant_id}')
             return results
         else:
             try:
@@ -179,11 +177,11 @@ class EnsemblService(object):
                     start_position = int(robokop_data[2])
                     end_position = int(robokop_data[3])
             except IndexError as e:
-                self.logger.error(f'ensembl: robokop variant key not set properly for variant: {variant_id} - {robokop_ids[0]}')
+                logger.error(f'ensembl: robokop variant key not set properly for variant: {variant_id} - {robokop_ids[0]}')
                 return results
 
         if not found_valid_robokop_key:
-            self.logger.debug(f'ensembl: latest robokop variant key not found for variant: {variant_id}')
+            logger.debug(f'ensembl: latest robokop variant key not found for variant: {variant_id}')
             return results
 
         flanking_min = start_position - flanking_region_size
@@ -228,7 +226,7 @@ class EnsemblService(object):
                               properties=props)
             results.append((edge, gene_node))
 
-        self.logger.debug(f'ensembl sequence_variant_to_gene found {len(results)} results for {variant_id}')
+        logger.debug(f'ensembl sequence_variant_to_gene found {len(results)} results for {variant_id}')
 
         return results
 

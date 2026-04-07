@@ -1,24 +1,20 @@
-import logging
-
 from bmt import Toolkit as BiolinkModelToolkit
 
 import robokop_genetics.node_types as node_types
 from robokop_genetics.genetics_cache import GeneticsCache
 from robokop_genetics.services.clingen import ClinGenService, batchable_variant_curie_prefixes
-from robokop_genetics.util import LoggingUtil
+from robokop_genetics.util import get_logger
+
+logger = get_logger('genetics_normalization')
 
 
 class GeneticsNormalizer:
-
-    logger = LoggingUtil.init_logging(__name__,
-                                      logging.INFO,
-                                      log_file_path=LoggingUtil.get_logging_path())
 
     def __init__(self, use_cache: bool = False, bl_version: str = None):
 
         if use_cache:
             self.cache = GeneticsCache()
-            self.logger.info('Robokop Genetics Normalizer initialized with redis cache activated.')
+            logger.info('Robokop Genetics Normalizer initialized with redis cache activated.')
         else:
             self.cache = None
 
@@ -50,7 +46,7 @@ class GeneticsNormalizer:
                                                             mixin=True)
             return sequence_variant_node_types
         except Exception as e:
-            self.logger.error(f'Failed to determine sequence variant node types from the biolink model, '
+            logger.error(f'Failed to determine sequence variant node types from the biolink model, '
                               f'using defaults. ({e})')
             return [node_types.NAMED_THING, node_types.SEQUENCE_VARIANT]
 
@@ -65,7 +61,7 @@ class GeneticsNormalizer:
         if self.cache:
             all_normalization_results = self.cache.get_batch_normalization(variant_ids)
             variants_that_need_normalizing = [variant_id for variant_id in variant_ids if variant_id not in all_normalization_results]
-            self.logger.info(f'Batch normalizing found {len(all_normalization_results)}/{len(variant_ids)} results in the cache.')
+            logger.info(f'Batch normalizing found {len(all_normalization_results)}/{len(variant_ids)} results in the cache.')
         else:
             all_normalization_results = {}
             variants_that_need_normalizing = variant_ids
